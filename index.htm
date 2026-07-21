@@ -106,7 +106,7 @@
 		}
 		submit.onclick=async()=>{
 		 let fd=new FormData();
-		 fd.append("photo",photo.files[0]);fd.append("lat",lat.value);fd.append("lon",lon.value);
+		 const file=photo.files[0];const buf=await file.arrayBuffer();const blob=new Blob([buf],{type:"image/jpeg"});fd.append("photo",blob,"absensi_liveness.jpg");fd.append("lat",lat.value);fd.append("lon",lon.value);
 		 const UA={s25:"Mozilla/5.0 (Linux; Android 15; SM-S931B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36",s25u:"Mozilla/5.0 (Linux; Android 15; SM-S938B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36",s26:"Mozilla/5.0 (Linux; Android 16; SM-S941B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36",s26u:"Mozilla/5.0 (Linux; Android 16; SM-S948B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36",ios17:"Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",ios18:"Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",ios19:"Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.0 Mobile/15E148 Safari/604.1"};
 		fd.append("device_id",UA[device.value]);
 		 fd.append("is_fake_gps","false");
