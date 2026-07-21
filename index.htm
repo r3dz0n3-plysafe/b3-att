@@ -7,7 +7,7 @@
     
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SweetAlert2 (Pengganti alert bawaan) -->
+    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
@@ -16,14 +16,14 @@
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
         }
-        /* Membalikkan video agar seperti cermin bagi pengguna */
+        /* Membalikkan video webcam agar seperti cermin bagi pengguna */
         #webcam, #overlay {
             transform: scaleX(-1);
         }
         
         /* Custom scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; rounded-lg; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
@@ -38,247 +38,283 @@
         }
     </style>
 </head>
-<body class="bg-slate-200 min-h-screen p-2 md:p-6 font-sans text-slate-800">
+<body class="bg-slate-200 min-h-screen p-3 md:p-6 font-sans text-slate-800 flex flex-col justify-center">
 
-    <div class="max-w-7xl mx-auto">
-        <!-- Main Navigation Tabs -->
-        <div class="flex justify-center mb-4 w-full">
-            <div class="bg-white p-1 rounded-xl shadow-md flex w-full md:w-auto">
-                <button id="main-tab-face" class="flex-1 md:px-6 py-3 md:py-2.5 text-sm font-bold bg-blue-600 text-white rounded-lg shadow-sm transition-all">1. Deteksi Wajah</button>
-                <button id="main-tab-b3" class="flex-1 md:px-6 py-3 md:py-2.5 text-sm font-semibold text-slate-600 hover:text-blue-600 rounded-lg transition-all">2. B3 Toolkit</button>
+    <div class="max-w-7xl mx-auto w-full">
+        
+        <!-- ==================== TAMPILAN 1: LOGIN (Tampil Awal) ==================== -->
+        <div id="view-login" class="max-w-md mx-auto my-auto bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-100 p-6 md:p-8">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-extrabold text-slate-800">Login Sistem B3</h1>
+                <p class="text-xs text-slate-500 mt-1">Silakan login untuk mengakses fitur Deteksi & Absensi</p>
+            </div>
+
+            <form id="loginForm" onsubmit="return false;" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">NIP</label>
+                    <input id="nip" type="text" class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Masukkan NIP Anda" required>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Password</label>
+                    <div class="relative flex items-center">
+                        <input id="password" type="password" class="w-full border border-slate-300 rounded-xl p-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Password" required>
+                        <button type="button" id="view-pwd" class="absolute right-3 text-slate-400 hover:text-slate-600 transition-colors text-base">👁️</button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
+                    <label class="block text-xs font-bold uppercase text-slate-600 mb-2">Verifikasi Captcha</label>
+                    <div class="bg-white border border-slate-200 p-2 rounded-xl mb-2 flex flex-col items-center justify-center min-h-[70px] relative shadow-inner">
+                        <img id="captchaImage" class="max-w-full h-12 object-contain rounded" alt="Loading Captcha...">
+                        <button type="button" id="gen" class="text-xs text-blue-600 font-semibold mt-1 hover:underline flex items-center gap-1">
+                            🔄 Muat Ulang Captcha
+                        </button>
+                    </div>
+                    <input id="cap" type="text" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm text-center font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ketik Kode Captcha" required>
+                </div>
+
+                <button id="login" type="button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg hover:shadow-blue-500/30 text-sm">
+                    🔑 Masuk ke Aplikasi
+                </button>
+            </form>
+
+            <div class="mt-4">
+                <details class="group bg-slate-50 border border-slate-200 rounded-xl p-2.5">
+                    <summary class="text-xs font-semibold text-slate-500 cursor-pointer list-none flex justify-between items-center">
+                        <span>Lihat Response API Login</span>
+                        <span class="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <pre id="loginRes" class="mt-2 text-[11px] bg-slate-900 text-green-400 p-2 rounded-lg overflow-x-auto">-</pre>
+                </details>
             </div>
         </div>
 
-        <!-- TAB 1: DETEKSI WAJAH (MediaPipe) -->
-        <!-- TAB 1: DETEKSI WAJAH (MediaPipe) -->
-        <div id="view-face" class="glass-panel rounded-2xl shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 block">
+
+        <!-- ==================== TAMPILAN 2: APLIKASI UTAMA (Disembunyikan di Awal) ==================== -->
+        <div id="view-app" class="hidden space-y-4">
             
-            <!-- KOLOM KIRI: KAMERA / UPLOAD -->
-            <div class="lg:col-span-7 p-4 md:p-6 border-r border-slate-200 bg-white">
-                <h2 class="text-xl md:text-2xl font-bold mb-4 text-slate-800 hidden md:block">Sumber Wajah</h2>
-                
-                <div class="flex bg-slate-100 p-1 rounded-xl mb-4">
-                    <button id="tab-webcam" class="flex-1 py-2 text-sm font-bold bg-white text-blue-600 rounded-lg shadow-sm transition-all">Kamera (Oncam)</button>
-                    <button id="tab-upload" class="flex-1 py-2 text-sm font-semibold text-slate-600 rounded-lg transition-all">Upload Foto</button>
-                </div>
-
-                <div id="container-webcam" class="relative w-full aspect-video bg-slate-900 rounded-xl overflow-hidden shadow-inner mb-4">
-                    <video id="webcam" class="absolute w-full h-full object-cover" autoplay muted playsinline></video>
-                    <canvas id="overlay" class="absolute top-0 left-0 w-full h-full"></canvas>
-                    
-                    <div id="loading-overlay" class="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center text-white transition-opacity duration-300 z-10">
-                        <svg class="animate-spin h-10 w-10 mb-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        <span id="loading-text" class="text-sm font-medium tracking-wide">Memuat MediaPipe FaceLandmarker...</span>
+            <!-- Top Header & Logout Bar -->
+            <div class="bg-white rounded-2xl p-3 md:p-4 shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-semibold uppercase">Status Sesi Login</p>
+                        <p id="user-display-nip" class="text-sm font-bold text-slate-800">Terautentikasi</p>
                     </div>
                 </div>
-
-                <div id="container-upload" class="hidden relative w-full aspect-video bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden shadow-inner mb-4 flex flex-col items-center justify-center p-4">
-                    <input type="file" id="photo-upload-input" accept="image/*" class="hidden">
-                    <div id="upload-placeholder" class="text-center cursor-pointer" onclick="document.getElementById('photo-upload-input').click()">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                        <p class="text-sm font-semibold text-slate-700">Klik untuk Pilih Foto</p>
-                    </div>
-                    <div id="uploaded-preview-container" class="absolute inset-0 hidden bg-slate-900">
-                        <img id="uploaded-img-preview" class="w-full h-full object-contain" alt="Uploaded">
-                        <button onclick="document.getElementById('photo-upload-input').click()" class="absolute bottom-3 right-3 bg-slate-800/80 hover:bg-slate-900 text-white text-xs font-semibold py-1.5 px-3 rounded-lg backdrop-blur transition-all">Ganti Foto</button>
-                    </div>
-                    <canvas id="upload-overlay" class="absolute top-0 left-0 w-full h-full pointer-events-none"></canvas>
-                </div>
-
-                <!-- Metrics (Disembunyikan di mobile agar ringkas) -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4">
-                    <div class="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
-                        <p class="text-[10px] text-slate-500 font-bold mb-0.5">YAW</p>
-                        <p id="val-yaw" class="text-sm font-bold">0.0°</p>
-                    </div>
-                    <div class="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
-                        <p class="text-[10px] text-slate-500 font-bold mb-0.5">PITCH</p>
-                        <p id="val-pitch" class="text-sm font-bold">0.0°</p>
-                    </div>
-                    <div class="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
-                        <p class="text-[10px] text-slate-500 font-bold mb-0.5">ROLL</p>
-                        <p id="val-roll" class="text-sm font-bold">0.0°</p>
-                    </div>
-                    <div class="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
-                        <p class="text-[10px] text-slate-500 font-bold mb-0.5">EAR</p>
-                        <p id="val-ear" class="text-sm font-bold">0.00</p>
-                    </div>
-                    <div class="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
-                        <p class="text-[10px] text-slate-500 font-bold mb-0.5">MAR</p>
-                        <p id="val-mar" class="text-sm font-bold">0.00</p>
-                    </div>
-                    <!-- Status Aksi (Selalu tampil, membesar di mobile) -->
-                    <div class="sm:col-span-1 bg-blue-50 p-2 rounded-lg text-center shadow-sm border border-blue-200 flex flex-col justify-center">
-                        <p class="text-[10px] text-blue-600 font-bold mb-0.5">STATUS</p>
-                        <p id="action-instruction" class="text-sm font-bold text-blue-700 leading-tight">Posisikan<br>Wajah</p>
-                    </div>
-                </div>
-                
-                <button id="capture-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all mb-3 flex items-center justify-center gap-2 shadow-sm">
-                    Ambil Gambar Manual
-                </button>
-                <button id="reset-btn" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-lg transition-all hidden">
-                    Ulangi Deteksi Wajah
+                <button id="logout-btn" class="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold py-2 px-3.5 rounded-xl transition-all flex items-center gap-1.5">
+                    🚪 Logout / Keluar
                 </button>
             </div>
 
-            <!-- KOLOM KANAN: HASIL -->
-            <div class="lg:col-span-5 p-6 bg-slate-50 flex flex-col h-full">
-                <h2 class="text-xl md:text-2xl font-bold mb-4 text-slate-800 hidden md:block">Hasil & Checklist</h2>
-                
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 md:p-4 mb-4">
-                    <h3 class="text-xs md:text-sm font-bold text-slate-500 uppercase tracking-wider mb-2 md:mb-3">Status Syarat Crop</h3>
-                    <ul class="space-y-1.5 md:space-y-2 text-xs md:text-sm">
-                        <li class="flex items-center gap-2"><span id="chk-face" class="text-lg md:text-xl">❌</span> Hanya ada 1 Wajah</li>
-                        <li class="flex items-center gap-2"><span id="chk-size" class="text-lg md:text-xl">❌</span> Ukuran Wajah Cukup</li>
-                        <li class="flex items-center gap-2"><span id="chk-center" class="text-lg md:text-xl">❌</span> Posisi Wajah di Tengah</li>
-                        <li class="flex items-center gap-2"><span id="chk-pose" class="text-lg md:text-xl">❌</span> Lurus Menghadap Depan</li>
-                        <li class="flex items-center gap-2 font-semibold text-blue-600"><span id="chk-liveness" class="text-lg md:text-xl">❌</span> Kedipkan Mata (Liveness)</li>
-                    </ul>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-sm font-semibold text-slate-700 mb-1">Ukuran Hasil Crop:</label>
-                    <select id="resize-select" class="w-full bg-white border border-slate-300 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="224">224 x 224 Pixel</option>
-                        <option value="256">256 x 256 Pixel</option>
-                        <option value="512">512 x 512 Pixel</option>
-                    </select>
-                </div>
-
-                <div class="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl bg-slate-100 p-4 mb-4 min-h-[200px]">
-                    <img id="cropped-result" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>" 
-                         class="w-32 h-32 object-cover rounded-xl shadow-md border-4 border-white transition-all" alt="Hasil Crop">
-                    <p id="blob-info" class="text-slate-500 text-xs mt-3 text-center font-mono">Belum ada Blob Data</p>
-                </div>
-
-                <button id="goto-b3-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md hidden flex items-center justify-center gap-2">
-                    Lanjut ke B3 Toolkit &rarr;
-                </button>
-            </div>
-        </div>
-
-        <!-- TAB 2: B3 TOOLKIT (Absensi) -->
-        <div id="view-b3" class="hidden max-w-3xl mx-auto space-y-6">
-            
-            <!-- Login Card -->
-            <div class="bg-white rounded-2xl shadow-md overflow-hidden">
-                <div class="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center cursor-pointer" id="toggle-login">
-                    <h3 class="font-bold text-lg text-slate-800">🔑 Login Sistem B3</h3>
-                    <span class="text-slate-400 text-sm">Minimize ▼</span>
-                </div>
-                <div id="loginCard" class="p-6 transition-all duration-300">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-1">NIP</label>
-                            <input id="nip" class="w-full border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Masukkan NIP">
-                            
-                            <label class="block text-sm font-semibold text-slate-700 mb-1 mt-3">Password</label>
-                            <div class="flex">
-                                <input id="password" type="password" class="w-full border border-slate-300 rounded-l-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 border-r-0" placeholder="Password">
-                                <button id="view-pwd" class="bg-slate-100 border border-slate-300 rounded-r-lg px-4 hover:bg-slate-200 transition-colors">👁️</button>
-                            </div>
-                            
-                            <button id="login" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg mt-5 transition-all">Login</button>
-                        </div>
-                        
-                        <div class="border-l border-slate-100 pl-4">
-                            <label class="block text-sm font-semibold text-slate-700 mb-1">Captcha</label>
-                            <div class="bg-slate-50 border border-slate-200 p-2 rounded-lg mb-2 flex flex-col items-center justify-center min-h-[80px]">
-                                <img id="captchaImage" class="max-w-full h-auto rounded">
-                                <button id="gen" class="text-xs text-blue-600 mt-2 font-semibold hover:underline">Muat Ulang Captcha</button>
-                            </div>
-                            <input id="cap" class="w-full border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Jawaban Captcha">
-                            
-                            <label class="block text-sm font-semibold text-slate-700 mt-3 mb-1">Bearer Token (Otomatis)</label>
-                            <textarea id="bearer" class="w-full border border-slate-300 rounded-lg p-2 text-xs font-mono bg-slate-50 focus:outline-none" rows="2" readonly></textarea>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-4">
-                        <details class="group bg-slate-50 border border-slate-200 rounded-lg p-3">
-                            <summary class="text-sm font-bold text-slate-600 cursor-pointer list-none flex justify-between items-center">
-                                <span>Lihat Response API</span>
-                                <span class="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
-                            </summary>
-                            <pre id="loginRes" class="mt-3 text-xs bg-slate-800 text-green-400 p-3 rounded overflow-x-auto">-</pre>
-                        </details>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Attendance Card -->
-            <div class="bg-white rounded-2xl shadow-md overflow-hidden">
-                <div class="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center cursor-pointer" id="toggle-att">
-                    <h3 class="font-bold text-lg text-slate-800">📸 Submit Attendance (Absensi)</h3>
-                    <span class="text-slate-400 text-sm">Minimize ▼</span>
-                </div>
-                <div id="attCard" class="p-6 transition-all duration-300">
-                    
-                    <!-- Wajah Payload Status -->
-                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5 flex items-center gap-4">
-                        <img id="b3-face-preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>" 
-                             class="w-16 h-16 rounded-lg object-cover border-2 border-white shadow-sm bg-slate-200">
-                        <div>
-                            <p class="text-sm font-bold text-slate-700">Foto Wajah (Payload Base)</p>
-                            <p id="b3-face-status" class="text-sm font-semibold text-red-500">❌ Belum ada wajah tersimpan</p>
-                            <p class="text-xs text-slate-500 mt-1">Selesaikan "Deteksi Wajah" di Tab 1 untuk mengisi payload ini.</p>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-1">Tipe Absen</label>
-                            <select id="type" class="w-full border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="clock-in">Hadir (Clock-In)</option>
-                                <option value="clock-out">Pulang (Clock-Out)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-1">Device ID Emulator</label>
-                            <select id="device" class="w-full border border-slate-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="s25">Samsung S25</option>
-                                <option value="s25u">Samsung S25 Ultra</option>
-                                <option value="s26">Samsung S26</option>
-                                <option value="s26u">Samsung S26 Ultra</option>
-                                <option value="ios17">iPhone (iOS 17)</option>
-                                <option value="ios18" selected>iPhone (iOS 18)</option>
-                                <option value="ios19">iPhone (iOS 19)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl mb-5">
-                        <label class="block text-sm font-bold text-slate-700 mb-2">Koordinat Lokasi</label>
-                        <div class="grid grid-cols-2 gap-3 mb-3">
-                            <div>
-                                <label class="text-xs text-slate-500">Latitude</label>
-                                <input id="lat" class="w-full border border-slate-300 rounded-lg p-2 font-mono text-sm" value="-6.314554">
-                            </div>
-                            <div>
-                                <label class="text-xs text-slate-500">Longitude</label>
-                                <input id="lon" class="w-full border border-slate-300 rounded-lg p-2 font-mono text-sm" value="106.986443">
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap gap-2">
-                            <button id="btnViewLocation" type="button" class="bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">🗺️ View Map</button>
-                            <button id="btnRandomLocation" type="button" class="bg-orange-400 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">🎲 Acak ±100m</button>
-                            <button id="btnResetLocation" type="button" class="bg-slate-400 hover:bg-slate-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">🔄 Reset Lokasi</button>
-                        </div>
-                    </div>
-
-                    <button id="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all shadow-md text-lg">
-                        🚀 Submit Attendance
+            <!-- Tab Navigasi Utama -->
+            <div class="flex justify-center w-full">
+                <div class="bg-white p-1 rounded-2xl shadow-md flex w-full md:w-auto border border-slate-200">
+                    <button id="main-tab-face" class="flex-1 md:px-8 py-3 text-sm font-bold bg-blue-600 text-white rounded-xl shadow-sm transition-all flex items-center justify-center gap-2">
+                        📷 1. Deteksi Wajah
                     </button>
+                    <button id="main-tab-b3" class="flex-1 md:px-8 py-3 text-sm font-semibold text-slate-600 hover:text-blue-600 rounded-xl transition-all flex items-center justify-center gap-2">
+                        📝 2. Absensi B3
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 1: DETEKSI WAJAH (MediaPipe) -->
+            <div id="view-face" class="glass-panel rounded-2xl shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 block border border-slate-200">
+                
+                <!-- KOLOM KIRI: KAMERA / UPLOAD -->
+                <div class="lg:col-span-7 p-4 md:p-6 border-r border-slate-200 bg-white">
+                    <h2 class="text-xl md:text-2xl font-bold mb-4 text-slate-800 hidden md:block">Sumber Wajah</h2>
                     
-                    <div class="mt-4">
-                        <details class="group bg-slate-50 border border-slate-200 rounded-lg p-3">
-                            <summary class="text-sm font-bold text-slate-600 cursor-pointer list-none flex justify-between items-center">
-                                <span>Lihat Response API</span>
-                                <span class="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
-                            </summary>
-                            <pre id="attRes" class="mt-3 text-xs bg-slate-800 text-green-400 p-3 rounded overflow-x-auto">-</pre>
-                        </details>
+                    <div class="flex bg-slate-100 p-1 rounded-xl mb-4">
+                        <button id="tab-webcam" class="flex-1 py-2 text-sm font-bold bg-white text-blue-600 rounded-lg shadow-sm transition-all">Kamera (Oncam)</button>
+                        <button id="tab-upload" class="flex-1 py-2 text-sm font-semibold text-slate-600 rounded-lg transition-all">Upload Foto</button>
+                    </div>
+
+                    <div id="container-webcam" class="relative w-full aspect-video bg-slate-900 rounded-xl overflow-hidden shadow-inner mb-4">
+                        <video id="webcam" class="absolute w-full h-full object-cover" autoplay muted playsinline></video>
+                        <canvas id="overlay" class="absolute top-0 left-0 w-full h-full"></canvas>
+                        
+                        <div id="loading-overlay" class="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center text-white transition-opacity duration-300 z-10">
+                            <svg class="animate-spin h-10 w-10 mb-3 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span id="loading-text" class="text-sm font-medium tracking-wide">Memuat MediaPipe FaceLandmarker...</span>
+                        </div>
+                    </div>
+
+                    <div id="container-upload" class="hidden relative w-full aspect-video bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden shadow-inner mb-4 flex flex-col items-center justify-center p-4">
+                        <input type="file" id="photo-upload-input" accept="image/*" class="hidden">
+                        <div id="upload-placeholder" class="text-center cursor-pointer" onclick="document.getElementById('photo-upload-input').click()">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            <p class="text-sm font-semibold text-slate-700">Klik untuk Pilih Foto</p>
+                        </div>
+                        <div id="uploaded-preview-container" class="absolute inset-0 hidden bg-slate-900 flex items-center justify-center">
+                            <img id="uploaded-img-preview" class="w-full h-full object-contain" alt="Uploaded">
+                            <button onclick="document.getElementById('photo-upload-input').click()" class="absolute bottom-3 right-3 bg-slate-800/80 hover:bg-slate-900 text-white text-xs font-semibold py-1.5 px-3 rounded-lg backdrop-blur transition-all z-10">Ganti Foto</button>
+                        </div>
+                        <canvas id="upload-overlay" class="absolute top-0 left-0 w-full h-full pointer-events-none z-0"></canvas>
+                    </div>
+
+                    <!-- Metrik Ringkas -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4">
+                        <div class="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
+                            <p class="text-[10px] text-slate-500 font-bold mb-0.5">YAW</p>
+                            <p id="val-yaw" class="text-sm font-bold">0.0°</p>
+                        </div>
+                        <div class="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
+                            <p class="text-[10px] text-slate-500 font-bold mb-0.5">PITCH</p>
+                            <p id="val-pitch" class="text-sm font-bold">0.0°</p>
+                        </div>
+                        <div class="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
+                            <p class="text-[10px] text-slate-500 font-bold mb-0.5">ROLL</p>
+                            <p id="val-roll" class="text-sm font-bold">0.0°</p>
+                        </div>
+                        <div class="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
+                            <p class="text-[10px] text-slate-500 font-bold mb-0.5">EAR</p>
+                            <p id="val-ear" class="text-sm font-bold">0.00</p>
+                        </div>
+                        <div class="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
+                            <p class="text-[10px] text-slate-500 font-bold mb-0.5">MAR</p>
+                            <p id="val-mar" class="text-sm font-bold">0.00</p>
+                        </div>
+                        <!-- Status Aksi -->
+                        <div class="sm:col-span-1 bg-blue-50 p-2 rounded-lg text-center shadow-sm border border-blue-200 flex flex-col justify-center">
+                            <p class="text-[10px] text-blue-600 font-bold mb-0.5">STATUS</p>
+                            <p id="action-instruction" class="text-sm font-bold text-blue-700 leading-tight">Posisikan<br>Wajah</p>
+                        </div>
+                    </div>
+                    
+                    <button id="capture-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-3 flex items-center justify-center gap-2 shadow-sm">
+                        Ambil Gambar Manual
+                    </button>
+                    <button id="reset-btn" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2.5 px-4 rounded-xl transition-all hidden">
+                        Ulangi Deteksi Wajah
+                    </button>
+                </div>
+
+                <!-- KOLOM KANAN: HASIL -->
+                <div class="lg:col-span-5 p-6 bg-slate-50 flex flex-col h-full">
+                    <h2 class="text-xl md:text-2xl font-bold mb-4 text-slate-800 hidden md:block">Hasil & Checklist</h2>
+                    
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 md:p-4 mb-4">
+                        <h3 class="text-xs md:text-sm font-bold text-slate-500 uppercase tracking-wider mb-2 md:mb-3">Status Syarat Crop</h3>
+                        <ul class="space-y-1.5 md:space-y-2 text-xs md:text-sm">
+                            <li class="flex items-center gap-2"><span id="chk-face" class="text-lg md:text-xl">❌</span> Hanya ada 1 Wajah</li>
+                            <li class="flex items-center gap-2"><span id="chk-size" class="text-lg md:text-xl">❌</span> Ukuran Wajah Cukup</li>
+                            <li class="flex items-center gap-2"><span id="chk-center" class="text-lg md:text-xl">❌</span> Posisi Wajah di Tengah</li>
+                            <li class="flex items-center gap-2"><span id="chk-pose" class="text-lg md:text-xl">❌</span> Lurus Menghadap Depan</li>
+                            <li class="flex items-center gap-2 font-semibold text-blue-600"><span id="chk-liveness" class="text-lg md:text-xl">❌</span> Kedipkan Mata (Liveness)</li>
+                        </ul>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Ukuran Hasil Crop:</label>
+                        <select id="resize-select" class="w-full bg-white border border-slate-300 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="224">224 x 224 Pixel</option>
+                            <option value="256" selected>256 x 256 Pixel</option>
+                            <option value="512">512 x 512 Pixel</option>
+                        </select>
+                    </div>
+
+                    <div class="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl bg-slate-100 p-4 mb-4 min-h-[200px]">
+                        <img id="cropped-result" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>" 
+                             class="w-32 h-32 object-cover rounded-xl shadow-md border-4 border-white transition-all" alt="Hasil Crop">
+                        <p id="blob-info" class="text-slate-500 text-xs mt-3 text-center font-mono">Belum ada Blob Data</p>
+                    </div>
+
+                    <button id="goto-b3-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md hidden flex items-center justify-center gap-2">
+                        Lanjut ke Absensi B3 &rarr;
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB 2: B3 TOOLKIT (Absensi) -->
+            <div id="view-b3" class="hidden max-w-3xl mx-auto space-y-6">
+                <div class="bg-white rounded-2xl shadow-md overflow-hidden border border-slate-200">
+                    <div class="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+                        <h3 class="font-bold text-lg text-slate-800 flex items-center gap-2">
+                            📸 Submit Attendance (Absensi)
+                        </h3>
+                        <span class="text-xs bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-full">Sesi Aktif</span>
+                    </div>
+                    <div id="attCard" class="p-6">
+                        
+                        <!-- Wajah Payload Status -->
+                        <div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-5 flex items-center gap-4">
+                            <img id="b3-face-preview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>" 
+                                 class="w-16 h-16 rounded-xl object-cover border-2 border-white shadow-sm bg-slate-200">
+                            <div>
+                                <p class="text-sm font-bold text-slate-700">Foto Wajah (Payload Base)</p>
+                                <p id="b3-face-status" class="text-sm font-semibold text-red-500">❌ Belum ada wajah tersimpan</p>
+                                <p class="text-xs text-slate-500 mt-1">Selesaikan "Deteksi Wajah" di Tab 1 untuk mengisi payload ini.</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Tipe Absen</label>
+                                <select id="type" class="w-full border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="clock-in">Hadir (Clock-In)</option>
+                                    <option value="clock-out">Pulang (Clock-Out)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-1">Device ID Emulator</label>
+                                <select id="device" class="w-full border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="s25">Samsung S25</option>
+                                    <option value="s25u">Samsung S25 Ultra</option>
+                                    <option value="s26">Samsung S26</option>
+                                    <option value="s26u">Samsung S26 Ultra</option>
+                                    <option value="ios17">iPhone (iOS 17)</option>
+                                    <option value="ios18" selected>iPhone (iOS 18)</option>
+                                    <option value="ios19">iPhone (iOS 19)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-2xl mb-5">
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Koordinat Lokasi</label>
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="text-xs text-slate-500">Latitude</label>
+                                    <input id="lat" class="w-full border border-slate-300 rounded-lg p-2 font-mono text-sm" value="-6.314554">
+                                </div>
+                                <div>
+                                    <label class="text-xs text-slate-500">Longitude</label>
+                                    <input id="lon" class="w-full border border-slate-300 rounded-lg p-2 font-mono text-sm" value="106.986443">
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button id="btnViewLocation" type="button" class="bg-cyan-500 hover:bg-cyan-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">🗺️ View Map</button>
+                                <button id="btnRandomLocation" type="button" class="bg-orange-400 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">🎲 Acak ±100m</button>
+                                <button id="btnResetLocation" type="button" class="bg-slate-400 hover:bg-slate-500 text-white px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors">🔄 Reset Lokasi</button>
+                            </div>
+                        </div>
+
+                        <!-- Textarea Bearer Hidden State View -->
+                        <div class="mb-5">
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Bearer Token Aktif</label>
+                            <textarea id="bearer" class="w-full border border-slate-200 rounded-xl p-2.5 text-xs font-mono bg-slate-100 text-slate-600 focus:outline-none" rows="2" readonly></textarea>
+                        </div>
+
+                        <button id="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md text-lg">
+                            🚀 Submit Attendance
+                        </button>
+                        
+                        <div class="mt-4">
+                            <details class="group bg-slate-50 border border-slate-200 rounded-xl p-3">
+                                <summary class="text-sm font-bold text-slate-600 cursor-pointer list-none flex justify-between items-center">
+                                    <span>Lihat Response API Submit</span>
+                                    <span class="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
+                                </summary>
+                                <pre id="attRes" class="mt-3 text-xs bg-slate-900 text-green-400 p-3 rounded-lg overflow-x-auto">-</pre>
+                            </details>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -289,8 +325,9 @@
     <script type="module">
         import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
 
-        // --- GLOBAL STATE ---
-        window.currentBlob = null; // Ini akan digunakan sebagai payload di Tab B3 Toolkit
+        // GLOBAL STATE
+        window.currentBlob = null;
+        let authToken = "";
 
         // Suppress TF Lite log
         const originalConsoleError = console.error;
@@ -299,15 +336,21 @@
             originalConsoleError.apply(console, args);
         };
 
-        // --- TAB NAVIGATION LOGIC ---
+        // UI ELEMENTS FOR SHOW / HIDE
+        const viewLogin = document.getElementById('view-login');
+        const viewApp = document.getElementById('view-app');
+        const userDisplayNip = document.getElementById('user-display-nip');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        // TAB NAVIGATION LOGIC
         const tabMainFace = document.getElementById('main-tab-face');
         const tabMainB3 = document.getElementById('main-tab-b3');
         const viewFace = document.getElementById('view-face');
         const viewB3 = document.getElementById('view-b3');
 
         function switchMainTab(tab) {
-            const activeClass = "flex-1 md:px-6 py-3 md:py-2.5 text-sm font-bold bg-blue-600 text-white rounded-lg shadow-sm transition-all";
-            const inactiveClass = "flex-1 md:px-6 py-3 md:py-2.5 text-sm font-semibold text-slate-600 hover:text-blue-600 rounded-lg transition-all";
+            const activeClass = "flex-1 md:px-8 py-3 text-sm font-bold bg-blue-600 text-white rounded-xl shadow-sm transition-all flex items-center justify-center gap-2";
+            const inactiveClass = "flex-1 md:px-8 py-3 text-sm font-semibold text-slate-600 hover:text-blue-600 rounded-xl transition-all flex items-center justify-center gap-2";
             if(tab === 'face') {
                 tabMainFace.className = activeClass;
                 tabMainB3.className = inactiveClass;
@@ -324,7 +367,7 @@
         tabMainB3.addEventListener('click', () => switchMainTab('b3'));
         document.getElementById('goto-b3-btn').addEventListener('click', () => switchMainTab('b3'));
 
-        // --- FACE DETECTION LOGIC ---
+        // FACE DETECTION LOGIC
         const video = document.getElementById('webcam');
         const canvas = document.getElementById('overlay');
         const ctx = canvas.getContext('2d');
@@ -422,37 +465,48 @@
             let faceW = (maxX - minX) * srcW;
             let faceH = (maxY - minY) * srcH;
 
-            const marginX = faceW * 0.5;
-            const marginY = faceH * 0.7;
-            let cropW = faceW + (marginX * 2);
-            let cropH = faceH + (marginY * 2);
-            const size = Math.max(cropW, cropH);
-            let startX = faceX - (size - faceW) / 2;
-            let startY = faceY - (size - faceH) / 2;
+            const marginX = faceW * 0.50;
+            const marginY = faceH * 0.70;
 
-            if (startX < 0) startX = 0;
-            if (startY < 0) startY = 0;
-            if (startX + size > srcW) startX = srcW - size;
-            if (startY + size > srcH) startY = srcH - size;
+            let targetW = faceW + (marginX * 2);
+            let targetH = faceH + (marginY * 2);
+            let squareSize = Math.max(targetW, targetH);
+
+            let cropX = faceX - (squareSize - faceW) / 2;
+            let cropY = faceY - (squareSize - faceH) / 2;
+
+            let clampedX = Math.max(0, cropX);
+            let clampedY = Math.max(0, cropY);
+            
+            let clampedW = Math.min(srcW - clampedX, squareSize);
+            let clampedH = Math.min(srcH - clampedY, squareSize);
+
+            let finalDimension = Math.min(clampedW, clampedH);
 
             const targetSize = parseInt(resizeSelect.value);
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = targetSize;
             tempCanvas.height = targetSize;
             const tempCtx = tempCanvas.getContext('2d');
-            tempCtx.drawImage(sourceElement, startX, startY, size, size, 0, 0, targetSize, targetSize);
+            
+            tempCtx.clearRect(0, 0, targetSize, targetSize);
+            tempCtx.drawImage(
+                sourceElement, 
+                clampedX, clampedY, finalDimension, finalDimension, 
+                0, 0, targetSize, targetSize
+            );
 
             currentBase64 = tempCanvas.toDataURL('image/jpeg', 0.95);
             croppedImg.src = currentBase64;
 
             tempCanvas.toBlob((blob) => {
-                window.currentBlob = blob; // Share ke global untuk tab B3
+                window.currentBlob = blob;
                 const kbSize = (blob.size / 1024).toFixed(2);
                 blobInfo.innerHTML = `Blob siap: <span class="font-bold text-slate-800">${kbSize} KB</span>`;
                 
-                updateB3FaceStatus(currentBase64); // Update UI di B3 Toolkit
+                updateB3FaceStatus(currentBase64);
                 
-                actionInstr.innerHTML = "Berhasil!<br><span class='text-xs'>Lanjut Tab 2</span>";
+                actionInstr.innerHTML = "Berhasil!<br><span class='text-xs'>Lanjut Absensi B3</span>";
                 actionInstr.parentElement.classList.replace('bg-blue-50', 'bg-green-100');
                 actionInstr.parentElement.classList.replace('border-blue-200', 'border-green-300');
                 actionInstr.classList.replace('text-blue-700', 'text-green-700');
@@ -510,13 +564,13 @@
                     document.getElementById('val-ear').textContent = ear.toFixed(3);
                     document.getElementById('val-mar').textContent = mar.toFixed(3);
 
-                    const isSizeGood = faceWidthRatio > 0.25; 
+                    const isSizeGood = faceWidthRatio > 0.22; 
                     document.getElementById('chk-size').textContent = isSizeGood ? '✅' : '❌';
 
-                    const isCentered = (centerX > 0.35 && centerX < 0.65) && (centerY > 0.35 && centerY < 0.65);
+                    const isCentered = (centerX > 0.30 && centerX < 0.70) && (centerY > 0.30 && centerY < 0.70);
                     document.getElementById('chk-center').textContent = isCentered ? '✅' : '❌';
 
-                    const isStraight = Math.abs(pose.yaw) < 15 && Math.abs(pose.pitch) < 15 && Math.abs(pose.roll) < 15;
+                    const isStraight = Math.abs(pose.yaw) < 18 && Math.abs(pose.pitch) < 18 && Math.abs(pose.roll) < 18;
                     document.getElementById('chk-pose').textContent = isStraight ? '✅' : '❌';
 
                     if (!isCropped) {
@@ -541,9 +595,10 @@
         }
 
         async function processUploadedPhoto(imageElement) {
-            uploadCanvas.width = uploadedPreviewContainer.clientWidth;
-            uploadCanvas.height = uploadedPreviewContainer.clientHeight;
+            uploadCanvas.width = containerUpload.clientWidth;
+            uploadCanvas.height = containerUpload.clientHeight;
             uploadCtx.clearRect(0, 0, uploadCanvas.width, uploadCanvas.height);
+            
             try {
                 const results = faceLandmarker.detect(imageElement);
                 const numFaces = results.faceLandmarks ? results.faceLandmarks.length : 0;
@@ -552,15 +607,36 @@
                 if (numFaces === 1) {
                     const landmarks = results.faceLandmarks[0];
                     currentLandmarks = landmarks;
+
+                    let minX = 1.0, minY = 1.0, maxX = 0.0, maxY = 0.0;
+                    uploadCtx.fillStyle = "#00ff00";
+                    for (let lm of landmarks) {
+                        if (lm.x < minX) minX = lm.x;
+                        if (lm.y < minY) minY = lm.y;
+                        if (lm.x > maxX) maxX = lm.x;
+                        if (lm.y > maxY) maxY = lm.y;
+                        uploadCtx.beginPath();
+                        uploadCtx.arc(lm.x * uploadCanvas.width, lm.y * uploadCanvas.height, 1.5, 0, 2 * Math.PI);
+                        uploadCtx.fill();
+                    }
+
+                    uploadCtx.strokeStyle = "#3b82f6";
+                    uploadCtx.lineWidth = 2;
+                    uploadCtx.strokeRect(minX * uploadCanvas.width, minY * uploadCanvas.height, (maxX - minX) * uploadCanvas.width, (maxY - minY) * uploadCanvas.height);
                     
                     document.getElementById('chk-size').textContent = '✅';
                     document.getElementById('chk-center').textContent = '✅';
                     document.getElementById('chk-pose').textContent = '✅';
                     document.getElementById('chk-liveness').innerHTML = '✅ <span class="text-xs text-slate-500">(Uploaded)</span>';
+                    
                     actionInstr.innerHTML = "Wajah Valid!<br><span class='text-xs'>Tekan Tombol Capture</span>";
                 } else {
                     currentLandmarks = null;
-                    actionInstr.innerHTML = "Wajah tidak<br>ditemukan/lebih dari 1";
+                    document.getElementById('chk-size').textContent = '❌';
+                    document.getElementById('chk-center').textContent = '❌';
+                    document.getElementById('chk-pose').textContent = '❌';
+                    document.getElementById('chk-liveness').textContent = '❌';
+                    actionInstr.innerHTML = "Wajah tidak<br>sesuai";
                 }
             } catch (err) {
                 console.error(err);
@@ -666,7 +742,7 @@
         // Initialize Mediapipe
         initMediaPipe();
 
-        // --- B3 TOOLKIT LOGIC ---
+        // B3 TOOLKIT & AUTHENTICATION LOGIC
         const nip = document.getElementById('nip');
         const password = document.getElementById('password');
         const captchaImage = document.getElementById('captchaImage');
@@ -678,23 +754,15 @@
         const device = document.getElementById('device');
         
         let captchaId = "";
-        
-        // UI Toggles
-        document.getElementById('toggle-login').onclick = () => {
-            const el = document.getElementById('loginCard');
-            el.classList.toggle('hidden');
-        };
-        document.getElementById('toggle-att').onclick = () => {
-            const el = document.getElementById('attCard');
-            el.classList.toggle('hidden');
-        };
+
         document.getElementById('view-pwd').onclick = () => {
             password.type = password.type === "password" ? "text" : "password";
         };
 
-        // Captcha Logic
+        // Captcha Fetching
         async function fetchCaptcha() {
             try {
+                captchaImage.classList.add('opacity-50');
                 const res = await fetch("https://beetri.bekasikota.go.id/api/v1/auth/captcha", { headers: { Accept: "application/json" } });
                 const text = await res.text();
                 const j = JSON.parse(text);
@@ -702,16 +770,22 @@
                 captchaImage.src = j.image_b64;
             } catch(e) {
                 console.error("Gagal load captcha", e);
+            } finally {
+                captchaImage.classList.remove('opacity-50');
             }
         }
         document.getElementById('gen').onclick = fetchCaptcha;
-        // Fetch awal
         fetchCaptcha();
 
-        // Login Logic
+        // Login Action with Hide & Show Switch
         document.getElementById('login').onclick = async () => {
+            if (!nip.value || !password.value || !cap.value) {
+                Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Isi NIP, Password, dan Captcha terlebih dahulu!' });
+                return;
+            }
+
             const btn = document.getElementById('login');
-            btn.innerHTML = 'Memproses...'; btn.disabled = true;
+            btn.innerHTML = '🔄 Memproses Login...'; btn.disabled = true;
             try {
                 let p = { nip: nip.value, password: password.value, remember_me: true, captcha_id: captchaId, captcha_answer: cap.value };
                 let r = await fetch("https://beetri.bekasikota.go.id/api/v1/auth/login", {
@@ -722,22 +796,68 @@
                 let txt = await r.text();
                 document.getElementById('loginRes').textContent = txt;
                 
+                let tokenAcquired = "";
                 try {
                     let j = JSON.parse(txt);
-                    bearer.value = j.access_token || j.token || j.data?.access_token || j.data?.token || "";
-                    if (bearer.value) {
-                        Swal.fire({ icon: 'success', title: 'Login Berhasil', timer: 1500, showConfirmButton: false });
-                    }
+                    tokenAcquired = j.access_token || j.token || j.data?.access_token || j.data?.token || "";
                 } catch(e){}
+
+                if (tokenAcquired) {
+                    authToken = tokenAcquired;
+                    bearer.value = authToken;
+                    userDisplayNip.textContent = `NIP: ${nip.value}`;
+
+                    Swal.fire({ 
+                        icon: 'success', 
+                        title: 'Login Berhasil!', 
+                        text: 'Selamat datang di Aplikasi B3 Toolkit', 
+                        timer: 1500, 
+                        showConfirmButton: false 
+                    });
+
+                    // Hide Login, Show Main App Container
+                    viewLogin.classList.add('hidden');
+                    viewApp.classList.remove('hidden');
+                    switchMainTab('face');
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Login Gagal', text: 'Periksa NIP, Password, atau Captcha Anda!' });
+                    fetchCaptcha();
+                }
             } catch (err) {
-                Swal.fire({ icon: 'error', title: 'Error', text: err.toString() });
+                Swal.fire({ icon: 'error', title: 'Error API', text: err.toString() });
             } finally {
-                btn.innerHTML = 'Login'; btn.disabled = false;
+                btn.innerHTML = '🔑 Masuk ke Aplikasi'; btn.disabled = false;
             }
         };
 
+        // Logout Action
+        logoutBtn.addEventListener('click', () => {
+            Swal.fire({
+                title: 'Konfirmasi Logout',
+                text: "Apakah Anda yakin ingin keluar?",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Keluar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    authToken = "";
+                    bearer.value = "";
+                    nip.value = "";
+                    password.value = "";
+                    cap.value = "";
+                    
+                    // Show Login, Hide Main App Container
+                    viewApp.classList.add('hidden');
+                    viewLogin.classList.remove('hidden');
+                    fetchCaptcha();
+                }
+            });
+        });
+
         // Location Logic
-        const DEFAULT_LAT = -6.314554, DEFAULT_LON = 106.986443;
+        const DEFAULT_LAT = -6.314567, DEFAULT_LON = 106.986529;
         document.getElementById('btnViewLocation').onclick = () => window.open(`https://www.google.com/maps?q=${lat.value},${lon.value}`, "_blank");
         document.getElementById('btnResetLocation').onclick = () => { lat.value = DEFAULT_LAT; lon.value = DEFAULT_LON; };
         document.getElementById('btnRandomLocation').onclick = () => {
@@ -752,15 +872,15 @@
         // Submit Attendance Logic
         document.getElementById('submit').onclick = async () => {
             if (!bearer.value) {
-                Swal.fire({ icon: 'warning', title: 'Belum Login', text: 'Silakan login terlebih dahulu untuk mendapatkan Bearer Token.' });
+                Swal.fire({ icon: 'warning', title: 'Sesi Tidak Valid', text: 'Silakan login kembali.' });
                 return;
             }
             if (!window.currentBlob) {
                 Swal.fire({ 
                     icon: 'warning', 
                     title: 'Wajah Belum Terdeteksi', 
-                    text: 'Silakan ambil gambar wajah terlebih dahulu melalui tab "Deteksi Wajah".',
-                    confirmButtonText: 'Ke Tab Deteksi Wajah'
+                    text: 'Silakan ambil foto wajah terlebih dahulu melalui Tab 1 (Deteksi Wajah).',
+                    confirmButtonText: 'Ke Deteksi Wajah'
                 }).then((res) => {
                     if (res.isConfirmed) switchMainTab('face');
                 });
@@ -768,13 +888,11 @@
             }
 
             const btn = document.getElementById('submit');
-            btn.innerHTML = 'Mengirim Data...'; btn.disabled = true;
+            btn.innerHTML = '🔄 Mengirim Data Absensi...'; btn.disabled = true;
 
             try {
                 let fd = new FormData();
-                // Gunakan currentBlob hasil crop dari MediaPipe sebagai file payload
                 fd.append("photo", window.currentBlob, "absensi_liveness.jpg");
-                
                 fd.append("lat", lat.value);
                 fd.append("lon", lon.value);
                 
@@ -785,7 +903,7 @@
                     s26u: "Mozilla/5.0 (Linux; Android 16; SM-S948B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Mobile Safari/537.36",
                     ios17: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
                     ios18: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
-                    ios19: "Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/19.0 Mobile/15E148 Safari/604.1"
+                    ios19: "Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
                 };
                 fd.append("device_id", UA[device.value]);
                 fd.append("is_fake_gps", "false");
@@ -798,7 +916,7 @@
                 
                 let txt = await r.text();
                 document.getElementById('attRes').textContent = txt;
-                Swal.fire({ icon: 'info', title: 'Request Terkirim', text: 'Cek kotak Response API untuk melihat hasilnya.' });
+                Swal.fire({ icon: 'info', title: 'Request Absensi Terkirim', text: 'Cek kotak Response API di bawah untuk melihat respons server.' });
             } catch(err) {
                 Swal.fire({ icon: 'error', title: 'Error Submit', text: err.toString() });
             } finally {
