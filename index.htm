@@ -199,7 +199,7 @@
         </div>
 
         <button id="capture-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-3 flex items-center justify-center gap-2 shadow-sm">
-          Ambil Gambar Manual
+          Capture
         </button>
         <button id="reset-btn" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2.5 px-4 rounded-xl transition-all hidden">
           Ulangi Deteksi Wajah
@@ -456,6 +456,8 @@
   let cameraStream = null;
   let cameraOn = false;
   let animationFrameId = null;
+  let uploadValidationOk = true;
+  let uploadRejectReasons = [];
 
   function calcDistance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
   function getEAR(landmarks) {
@@ -654,6 +656,19 @@
     animationFrameId = window.requestAnimationFrame(predictWebcam);
   }
 
+  function setUploadStatusBox(isRejected) {
+    const statusBox = actionInstr.parentElement;
+    statusBox.classList.remove('bg-blue-50', 'border-blue-200', 'bg-red-50', 'border-red-300', 'bg-green-100', 'border-green-300');
+    actionInstr.classList.remove('text-blue-700', 'text-red-600', 'text-green-700');
+    if (isRejected) {
+      statusBox.classList.add('bg-red-50', 'border-red-300');
+      actionInstr.classList.add('text-red-600');
+    } else {
+      statusBox.classList.add('bg-blue-50', 'border-blue-200');
+      actionInstr.classList.add('text-blue-700');
+    }
+  }
+
   async function processUploadedPhoto(imageElement) {
     uploadCanvas.width = containerUpload.clientWidth;
     uploadCanvas.height = containerUpload.clientHeight;
@@ -666,7 +681,6 @@
 
       if (numFaces === 1) {
         const landmarks = results.faceLandmarks[0];
-        currentLandmarks = landmarks;
 
         let minX = 1.0, minY = 1.0, maxX = 0.0, maxY = 0.0;
         uploadCtx.fillStyle = "#00ff00";
@@ -680,26 +694,70 @@
           uploadCtx.fill();
         }
 
+        // Margin 1.25, margin box face
+        const boxMargin = 1.25 * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
+        const boxX = minX * uploadCanvas.width;
+        const boxY = minY * uploadCanvas.height;
+        const boxW = (maxX - minX) * uploadCanvas.width;
+        const boxH = (maxY - minY) * uploadCanvas.height;
+
         uploadCtx.strokeStyle = "#3b82f6";
         uploadCtx.lineWidth = 2;
-        uploadCtx.strokeRect(minX * uploadCanvas.width, minY * uploadCanvas.height, (maxX - minX) * uploadCanvas.width, (maxY - minY) * uploadCanvas.height);
+        uploadCtx.strokeRect(boxX - boxMargin, boxY - boxMargin, boxW + boxMargin * 2, boxH + boxMargin * 2);
 
-        document.getElementById('chk-size').textContent = '✅';
-        document.getElementById('chk-center').textContent = '✅';
-        document.getElementById('chk-pose').textContent = '✅';
-        document.getElementById('chk-liveness').innerHTML = '✅ <span class="text-xs text-slate-500">(Uploaded)</span>';
+        const faceWidthRatio = maxX - minX;
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
 
-        actionInstr.innerHTML = "Wajah Valid!<br><span class='text-xs'>Tekan Tombol Capture</span>";
+        const isSizeGood = faceWidthRatio > 0.22;
+        const isCentered = (centerX > 0.30 && centerX < 0.70) && (centerY > 0.30 && centerY < 0.70);
+
+        let isStraight = true;
+        if (results.facialTransformationMatrixes && results.facialTransformationMatrixes[0]) {
+          const pose = getEulerAngles(results.facialTransformationMatrixes[0].data);
+          isStraight = Math.abs(pose.yaw) < 18 && Math.abs(pose.pitch) < 18 && Math.abs(pose.roll) < 18;
+        }
+
+        document.getElementById('chk-size').textContent = isSizeGood ? '✅' : '❌';
+        document.getElementById('chk-center').textContent = isCentered ? '✅' : '❌';
+        document.getElementById('chk-pose').textContent = isStraight ? '✅' : '❌';
+
+        if (isSizeGood && isCentered && isStraight) {
+          currentLandmarks = landmarks;
+          uploadValidationOk = true;
+          uploadRejectReasons = [];
+          document.getElementById('chk-liveness').innerHTML = '✅ <span class="text-xs text-slate-500">(Uploaded)</span>';
+          setUploadStatusBox(false);
+          actionInstr.innerHTML = "Wajah Valid!<br><span class='text-xs'>Tekan Tombol Capture</span>";
+        } else {
+          currentLandmarks = landmarks;
+          document.getElementById('chk-liveness').textContent = '❌';
+          const reasons = [];
+          if (!isSizeGood) reasons.push("wajah terlalu kecil/jauh");
+          if (!isCentered) reasons.push("wajah tidak di tengah");
+          if (!isStraight) reasons.push("wajah tidak lurus ke depan");
+          uploadValidationOk = false;
+          uploadRejectReasons = reasons;
+          setUploadStatusBox(true);
+          actionInstr.innerHTML = "Foto Ditolak<br><span class='text-xs'>" + reasons.join(", ") + "</span>";
+        }
       } else {
         currentLandmarks = null;
+        uploadValidationOk = false;
+        uploadRejectReasons = ["wajah tidak terdeteksi"];
         document.getElementById('chk-size').textContent = '❌';
         document.getElementById('chk-center').textContent = '❌';
         document.getElementById('chk-pose').textContent = '❌';
         document.getElementById('chk-liveness').textContent = '❌';
+        setUploadStatusBox(true);
         actionInstr.innerHTML = "Wajah tidak<br>sesuai";
       }
     } catch (err) {
       console.error(err);
+      currentLandmarks = null;
+      uploadValidationOk = false;
+      uploadRejectReasons = ["gagal memproses foto"];
+      setUploadStatusBox(true);
       actionInstr.innerHTML = "Gagal Deteksi";
     }
   }
@@ -776,6 +834,7 @@
     tabWebcam.className = "flex-1 py-2 text-sm font-bold bg-white text-blue-600 rounded-lg shadow-sm transition-all";
     tabUpload.className = "flex-1 py-2 text-sm font-semibold text-slate-600 rounded-lg transition-all";
     containerWebcam.classList.remove('hidden'); containerUpload.classList.add('hidden');
+    if (!isCropped) setUploadStatusBox(false);
     try { await faceLandmarker.setOptions({ runningMode: "VIDEO" }); } catch(e) {}
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     predictWebcam();
@@ -791,6 +850,27 @@
     if (uploadedImageElement) processUploadedPhoto(uploadedImageElement);
   });
 
+  function resetCropState(triggerRedetect) {
+    isCropped = false; currentLandmarks = null; window.currentBlob = null;
+    uploadValidationOk = true; uploadRejectReasons = [];
+    croppedImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>";
+    blobInfo.innerHTML = "Belum ada Blob Data";
+    document.getElementById('b3-face-preview').src = croppedImg.src;
+    const statusEl = document.getElementById('b3-face-status');
+    statusEl.innerHTML = "❌ Belum ada wajah tersimpan";
+    statusEl.classList.replace('text-green-600', 'text-red-500');
+
+    setUploadStatusBox(false);
+    actionInstr.innerHTML = "Posisikan<br>Wajah";
+
+    resetBtn.classList.add('hidden');
+    captureBtn.classList.remove('hidden');
+    gotoB3Btn.classList.add('hidden');
+    saveProfileBtn.classList.add('hidden');
+
+    if (triggerRedetect && activeMode === 'upload' && uploadedImageElement) processUploadedPhoto(uploadedImageElement);
+  }
+
   photoUploadInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -802,7 +882,7 @@
         uploadedImgPreview.src = event.target.result;
         uploadPlaceholder.classList.add('hidden');
         uploadedPreviewContainer.classList.remove('hidden');
-        isCropped = false;
+        resetCropState(false);
         await processUploadedPhoto(img);
       };
       img.src = event.target.result;
@@ -810,39 +890,35 @@
     reader.readAsDataURL(file);
   });
 
-  resetBtn.addEventListener('click', () => {
-    isCropped = false; currentLandmarks = null; window.currentBlob = null;
-    croppedImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>";
-    blobInfo.innerHTML = "Belum ada Blob Data";
-    document.getElementById('b3-face-preview').src = croppedImg.src;
-    const statusEl = document.getElementById('b3-face-status');
-    statusEl.innerHTML = "❌ Belum ada wajah tersimpan";
-    statusEl.classList.replace('text-green-600', 'text-red-500');
-
-    actionInstr.parentElement.classList.replace('bg-green-100', 'bg-blue-50');
-    actionInstr.parentElement.classList.replace('border-green-300', 'border-blue-200');
-    actionInstr.classList.replace('text-green-700', 'text-blue-700');
-    actionInstr.innerHTML = "Posisikan<br>Wajah";
-
-    resetBtn.classList.add('hidden');
-    captureBtn.classList.remove('hidden');
-    gotoB3Btn.classList.add('hidden');
-    saveProfileBtn.classList.add('hidden');
-
-    if (activeMode === 'upload' && uploadedImageElement) processUploadedPhoto(uploadedImageElement);
-  });
+  resetBtn.addEventListener('click', () => resetCropState(true));
 
   captureBtn.addEventListener('click', () => {
     if (isCropped) return;
-    if (currentLandmarks) {
-      if (activeMode === 'webcam') {
-        processCropFromSource(currentLandmarks, video, true);
-      } else {
-        processCropFromSource(currentLandmarks, uploadedImageElement, false);
-      }
-    } else {
+    if (!currentLandmarks) {
       Swal.fire({ icon: 'error', title: 'Gagal', text: 'Wajah tidak terdeteksi!' });
+      return;
     }
+    if (activeMode === 'webcam') {
+      processCropFromSource(currentLandmarks, video, true);
+      return;
+    }
+    if (!uploadValidationOk) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Kualitas Foto Kurang Ideal',
+        html: 'Alasan: ' + uploadRejectReasons.join(', ') + '<br><br>Foto ini berisiko ditolak sistem absensi. Tetap lanjutkan?',
+        showCancelButton: true,
+        confirmButtonText: 'Lanjutkan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#dc2626'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          processCropFromSource(currentLandmarks, uploadedImageElement, false);
+        }
+      });
+      return;
+    }
+    processCropFromSource(currentLandmarks, uploadedImageElement, false);
   });
 
   saveProfileBtn.addEventListener('click', async () => {
