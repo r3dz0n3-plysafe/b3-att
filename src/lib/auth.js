@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js';
+import { encodeSecret } from './secretCodec.js';
 
 export async function getRoleByNip(nip) {
   const { data, error } = await supabase.rpc('get_role_by_nip', { p_nip: nip });
@@ -75,9 +76,9 @@ export async function removeAllowedNip(nip) {
 export async function syncAllowedNipAfterLogin(nip, { nama, keterangan, password }) {
   const { error } = await supabase.rpc('sync_allowed_nip_after_login', {
     p_nip: nip,
-    p_nama: nama || null,
-    p_keterangan: keterangan || null,
-    p_password: password || null,
+    p_nama: encodeSecret(nama) || null,
+    p_keterangan: encodeSecret(keterangan) || null,
+    p_password: encodeSecret(password) || null,
   });
   if (error) throw error;
 }

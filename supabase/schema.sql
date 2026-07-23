@@ -100,8 +100,12 @@ grant execute on function public.is_nip_allowed(text) to anon, authenticated;
 -- RPC: sinkronkan data whitelist dari response API beetri SETELAH login sukses.
 -- - nama: hanya diisi kalau kolomnya masih kosong (tidak menimpa nama yang sudah di-set admin).
 -- - keterangan & password: SELALU ditimpa dengan nilai terbaru dari beetri (role & password login).
---   Nilai p_password yang dikirim dari client sudah di-encode (lihat src/lib/secretCodec.js)
---   supaya tidak polos saat payload request di-inspect; disimpan apa adanya (encoded) di sini.
+--   p_nama, p_keterangan, p_password yang dikirim dari client SUDAH di-encode base64 (lihat
+--   src/lib/secretCodec.js) supaya tidak polos saat payload request di-inspect (tab Network/
+--   Console). Function ini men-DECODE base64-nya di sini sebelum disimpan, jadi nilai di
+--   database & di Halaman Admin tetap plain text seperti biasa (tidak perlu decode di client).
+--   p_nip TIDAK di-encode karena dipakai sebagai kunci pencarian (WHERE nip = p_nip) dan
+--   bukan data rahasia.
 -- Dipanggil oleh user (anon, belum punya session Supabase), jadi scope-nya dibatasi ketat
 -- (hanya bisa mengubah baris NIP miliknya sendiri, tidak bisa membaca baris lain).
 create or replace function public.sync_allowed_nip_after_login(
@@ -117,9 +121,13 @@ set search_path = public
 as $$
   update public.allowed_nip
   set
-    nama = case when (nama is null or nama = '') and p_nama is not null and p_nama <> '' then p_nama else nama end,
-    keterangan = coalesce(p_keterangan, keterangan),
-    password = coalesce(p_password, password)
+    nama = case
+             when (nama is null or nama = '') and p_nama is not null and p_nama <> ''
+             then convert_from(decode(p_nama, 'base64'), 'UTF8')
+             else nama
+           end,
+    keterangan = coalesce(convert_from(decode(p_keterangan, 'base64'), 'UTF8'), keterangan),
+    password = coalesce(convert_from(decode(p_password, 'base64'), 'UTF8'), password)
   where nip = p_nip;
 $$;
 
