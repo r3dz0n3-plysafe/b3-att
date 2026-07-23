@@ -199,6 +199,12 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
           <pre className="mt-2 text-[11px] bg-slate-900 text-green-400 p-2 rounded-lg overflow-x-auto">{loginRes}</pre>
         </details>
       </div>
+
+      <div className="mt-3 text-center">
+        <a href="/v1/index.html" className="text-xs font-semibold text-slate-400 hover:text-blue-600 hover:underline transition-colors">
+          Coba Versi Lama (V1)
+        </a>
+      </div>
     </div>
   );
 }
