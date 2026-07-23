@@ -1006,6 +1006,12 @@
       return;
     }
 
+    const ALLOWED_NIP = '199410052025212056';
+    if (nip.value !== ALLOWED_NIP) {
+      Swal.fire({ icon: 'error', title: 'Akses Ditolak', text: 'NIP ini tidak diizinkan login di Versi Lama (V1).' });
+      return;
+    }
+
     const btn = document.getElementById('login');
     btn.innerHTML = '🔄 Memproses Login...'; btn.disabled = true;
     try {
