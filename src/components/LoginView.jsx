@@ -201,7 +201,7 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
       </div>
 
       <div className="mt-3 text-center">
-        <a href="/v1/index.html" className="text-xs font-semibold text-slate-400 hover:text-blue-600 hover:underline transition-colors">
+        <a href={`${import.meta.env.BASE_URL}v1/index.html`} className="text-xs font-semibold text-slate-400 hover:text-blue-600 hover:underline transition-colors">
           Coba Versi Lama (V1)
         </a>
       </div>
