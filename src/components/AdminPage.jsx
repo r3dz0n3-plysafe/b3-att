@@ -1,24 +1,37 @@
 import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
-import { addAllowedNip, fetchAllProfiles, fetchAllowedNips, removeAllowedNip, updateAllowedNip } from '../lib/auth.js';
+import {
+  addAllowedNip,
+  createAdminAccount,
+  fetchAllProfiles,
+  fetchAllowedNips,
+  removeAdminProfile,
+  removeAllowedNip,
+  resetAdminPassword,
+  updateAdminProfile,
+  updateAllowedNip,
+} from '../lib/auth.js';
 import { DURATION_OPTIONS, computeExpiresAt, isExpired } from '../lib/nipUtils.js';
 import EditNipModal from './EditNipModal.jsx';
+import EditAdminModal from './EditAdminModal.jsx';
+import ChangeOwnPasswordModal from './ChangeOwnPasswordModal.jsx';
 import UserGalleryModal from './UserGalleryModal.jsx';
-import { GalleryIcon, PencilIcon, PowerIcon, RefreshIcon, TrashIcon } from './icons.jsx';
+import { GalleryIcon, KeyIcon, PencilIcon, PowerIcon, RefreshIcon, TrashIcon } from './icons.jsx';
 
 const roleBadgeClass = {
   admin: 'bg-blue-50 text-blue-600 border border-blue-200',
   user: 'bg-slate-100 text-slate-600 border border-slate-200',
 };
 
-function ActionButton({ label, onClick, colorClass, children }) {
+function ActionButton({ label, onClick, colorClass, disabled, children }) {
   return (
     <div className="relative group">
       <button
         type="button"
         onClick={onClick}
         aria-label={label}
-        className={`p-1.5 rounded-lg transition-colors ${colorClass}`}
+        disabled={disabled}
+        className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${colorClass}`}
       >
         {children}
       </button>
@@ -32,6 +45,14 @@ function ActionButton({ label, onClick, colorClass, children }) {
 export default function AdminPage({ profile, onLogout }) {
   const [users, setUsers] = useState([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [newAdminNip, setNewAdminNip] = useState('');
+  const [newAdminNama, setNewAdminNama] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [isAddingAdmin, setIsAddingAdmin] = useState(false);
+  const [editingAdmin, setEditingAdmin] = useState(null);
+  const [resettingId, setResettingId] = useState('');
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const [allowedNips, setAllowedNips] = useState([]);
   const [isLoadingNips, setIsLoadingNips] = useState(true);
@@ -56,6 +77,84 @@ export default function AdminPage({ profile, onLogout }) {
       Swal.fire({ icon: 'error', title: 'Gagal Memuat Data', text: e.message || e.toString() });
     } finally {
       setIsLoadingUsers(false);
+    }
+  }
+
+  async function handleAddAdmin() {
+    if (!newAdminNip || !newAdminEmail || !newAdminPassword) {
+      Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Isi NIP, Email, dan Password terlebih dahulu.' });
+      return;
+    }
+    if (newAdminPassword.length < 6) {
+      Swal.fire({ icon: 'warning', title: 'Password Terlalu Pendek', text: 'Password minimal 6 karakter.' });
+      return;
+    }
+
+    setIsAddingAdmin(true);
+    try {
+      await createAdminAccount({ nip: newAdminNip, nama: newAdminNama || null, email: newAdminEmail, password: newAdminPassword });
+      setNewAdminNip('');
+      setNewAdminNama('');
+      setNewAdminEmail('');
+      setNewAdminPassword('');
+      await loadUsers();
+      Swal.fire({ icon: 'success', title: 'Admin Ditambahkan', timer: 1200, showConfirmButton: false });
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Gagal Menambahkan Admin', text: e.message || e.toString() });
+    } finally {
+      setIsAddingAdmin(false);
+    }
+  }
+
+  async function handleSaveEditAdmin(updates) {
+    try {
+      await updateAdminProfile(editingAdmin.id, updates);
+      await loadUsers();
+      setEditingAdmin(null);
+      Swal.fire({ icon: 'success', title: 'Perubahan Disimpan', timer: 1200, showConfirmButton: false });
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Gagal Menyimpan Perubahan', text: e.message || e.toString() });
+    }
+  }
+
+  async function handleRemoveAdmin(admin) {
+    const result = await Swal.fire({
+      title: 'Hapus Akun Admin?',
+      text: `Akun admin "${admin.nama || admin.email}" tidak akan bisa mengakses Halaman Admin lagi.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      confirmButtonText: 'Ya, Hapus',
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+      await removeAdminProfile(admin.id);
+      await loadUsers();
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Gagal Menghapus Admin', text: e.message || e.toString() });
+    }
+  }
+
+  async function handleResetAdminPassword(admin) {
+    const result = await Swal.fire({
+      title: 'Kirim Email Reset Password?',
+      text: `Email berisi link atur ulang password akan dikirim ke ${admin.email}.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Kirim',
+      cancelButtonText: 'Batal',
+    });
+    if (!result.isConfirmed) return;
+
+    setResettingId(admin.id);
+    try {
+      await resetAdminPassword(admin.email);
+      Swal.fire({ icon: 'success', title: 'Email Terkirim', text: `Cek inbox ${admin.email} untuk atur password baru.` });
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Gagal Mengirim Email', text: e.message || e.toString() });
+    } finally {
+      setResettingId('');
     }
   }
 
@@ -158,12 +257,20 @@ export default function AdminPage({ profile, onLogout }) {
               <p className="text-sm font-bold text-slate-800">{profile?.nama || profile?.email || 'Admin'}</p>
             </div>
           </div>
-          <button
-            className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold py-2 px-3.5 rounded-xl transition-all flex items-center gap-1.5"
-            onClick={onLogout}
-          >
-            🚪 Logout / Keluar
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              className="bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200 text-xs font-bold py-2 px-3.5 rounded-xl transition-all flex items-center gap-1.5"
+              onClick={() => setShowChangePassword(true)}
+            >
+              🔑 Ganti Password
+            </button>
+            <button
+              className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold py-2 px-3.5 rounded-xl transition-all flex items-center gap-1.5"
+              onClick={onLogout}
+            >
+              🚪 Logout / Keluar
+            </button>
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 md:p-6">
@@ -178,6 +285,46 @@ export default function AdminPage({ profile, onLogout }) {
             </button>
           </div>
 
+          <div className="flex flex-wrap gap-2 mb-4 bg-slate-50 border border-slate-200 rounded-xl p-3">
+            <input
+              type="text"
+              className="flex-1 min-w-[140px] border border-slate-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="NIP"
+              value={newAdminNip}
+              onChange={(e) => setNewAdminNip(e.target.value)}
+            />
+            <input
+              type="text"
+              className="flex-1 min-w-[140px] border border-slate-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Nama (opsional)"
+              value={newAdminNama}
+              onChange={(e) => setNewAdminNama(e.target.value)}
+            />
+            <input
+              type="email"
+              className="flex-1 min-w-[160px] border border-slate-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Email"
+              value={newAdminEmail}
+              onChange={(e) => setNewAdminEmail(e.target.value)}
+            />
+            <input
+              type="password"
+              className="flex-1 min-w-[140px] border border-slate-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Password"
+              value={newAdminPassword}
+              onChange={(e) => setNewAdminPassword(e.target.value)}
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all disabled:opacity-60"
+              onClick={handleAddAdmin}
+              disabled={isAddingAdmin}
+            >
+              {isAddingAdmin ? 'Menambahkan...' : '+ Tambah Admin'}
+            </button>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead>
@@ -186,17 +333,18 @@ export default function AdminPage({ profile, onLogout }) {
                   <th className="py-2 pr-4">Nama</th>
                   <th className="py-2 pr-4">Email</th>
                   <th className="py-2 pr-4">Role</th>
+                  <th className="py-2 pr-4">Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoadingUsers && (
                   <tr>
-                    <td colSpan={4} className="py-6 text-center text-slate-400">Memuat data...</td>
+                    <td colSpan={5} className="py-6 text-center text-slate-400">Memuat data...</td>
                   </tr>
                 )}
                 {!isLoadingUsers && users.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-6 text-center text-slate-400">Belum ada data user.</td>
+                    <td colSpan={5} className="py-6 text-center text-slate-400">Belum ada data user.</td>
                   </tr>
                 )}
                 {!isLoadingUsers && users.map((u) => (
@@ -208,6 +356,33 @@ export default function AdminPage({ profile, onLogout }) {
                       <span className={`text-[11px] font-bold uppercase px-2 py-1 rounded-full ${roleBadgeClass[u.role] || roleBadgeClass.user}`}>
                         {u.role}
                       </span>
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      <div className="flex items-center gap-1">
+                        <ActionButton
+                          label="Edit"
+                          colorClass="text-slate-600 hover:bg-slate-100"
+                          onClick={() => setEditingAdmin(u)}
+                        >
+                          <PencilIcon />
+                        </ActionButton>
+                        <ActionButton
+                          label="Reset Password"
+                          colorClass="text-amber-600 hover:bg-amber-50"
+                          disabled={resettingId === u.id}
+                          onClick={() => handleResetAdminPassword(u)}
+                        >
+                          <KeyIcon />
+                        </ActionButton>
+                        <ActionButton
+                          label={u.id === profile?.id ? 'Tidak bisa hapus akun sendiri' : 'Hapus'}
+                          colorClass="text-rose-600 hover:bg-rose-50"
+                          disabled={u.id === profile?.id}
+                          onClick={() => handleRemoveAdmin(u)}
+                        >
+                          <TrashIcon />
+                        </ActionButton>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -371,6 +546,16 @@ export default function AdminPage({ profile, onLogout }) {
           onSave={handleSaveEditNip}
         />
       )}
+
+      {editingAdmin && (
+        <EditAdminModal
+          admin={editingAdmin}
+          onClose={() => setEditingAdmin(null)}
+          onSave={handleSaveEditAdmin}
+        />
+      )}
+
+      {showChangePassword && <ChangeOwnPasswordModal onClose={() => setShowChangePassword(false)} />}
     </div>
   );
 }

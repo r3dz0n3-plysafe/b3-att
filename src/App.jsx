@@ -6,6 +6,7 @@ import FaceDetectionView from './components/FaceDetectionView.jsx';
 import AttendanceView from './components/AttendanceView.jsx';
 import ProfileView from './components/ProfileView.jsx';
 import AdminPage from './components/AdminPage.jsx';
+import ResetPasswordView from './components/ResetPasswordView.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { fetchTodayScheduleLocation } from './lib/api.js';
 import { fetchOwnProfile, signOutAdmin } from './lib/auth.js';
@@ -150,6 +151,8 @@ function App() {
           )
         }
       />
+
+      <Route path="/reset-password" element={<ResetPasswordView />} />
 
       <Route
         path="/admin"

@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabase.js';
 import { encodeSecret } from './secretCodec.js';
 
@@ -39,6 +40,54 @@ export async function fetchAllProfiles() {
 
 export async function signOutAdmin() {
   await supabase.auth.signOut();
+}
+
+// Ganti password admin yang SEDANG login sendiri. Karena dipanggil pada sesi yang sudah
+// terautentikasi, Supabase tidak butuh password lama untuk ini.
+export async function updateOwnPassword(password) {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
+}
+
+// Membuat akun admin baru (auth.users + baris profiles). Sengaja pakai instance Supabase
+// client TERPISAH (persistSession: false, storage sendiri) khusus untuk signUp ini — supaya
+// sesi admin yang sedang login di client utama (`supabase`) tidak ikut tertukar/ter-replace
+// oleh sesi user baru yang otomatis dibuat signUp().
+// nip & nama dikirim lewat options.data (raw_user_meta_data) supaya trigger
+// on_auth_user_created di schema.sql bisa langsung insert baris profiles DALAM transaksi yang
+// sama dengan insert auth.users — tidak perlu (dan tidak boleh) insert profiles manual di sini,
+// karena itu yang sebelumnya menyebabkan race condition foreign key.
+export async function createAdminAccount({ nip, nama, email, password }) {
+  const tempClient = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession: false },
+  });
+
+  const { data, error } = await tempClient.auth.signUp({
+    email,
+    password,
+    options: { data: { nip, nama: nama || null } },
+  });
+  if (error) throw error;
+  if (!data.user?.id) throw new Error('Gagal membuat akun: user id tidak ditemukan pada response signUp.');
+}
+
+// Tidak ada Supabase Admin API di client (butuh service_role key, tidak boleh dipakai di
+// browser), jadi "reset password" untuk admin LAIN cuma bisa lewat email reset resmi Supabase
+// (link di email membawa user itu sendiri ke /reset-password untuk atur password baru).
+export async function resetAdminPassword(email) {
+  const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}reset-password`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  if (error) throw error;
+}
+
+export async function updateAdminProfile(id, updates) {
+  const { error } = await supabase.from('profiles').update(updates).eq('id', id);
+  if (error) throw error;
+}
+
+export async function removeAdminProfile(id) {
+  const { error } = await supabase.from('profiles').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export async function isNipAllowed(nip) {

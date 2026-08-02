@@ -12,6 +12,38 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
+-- Trigger: auto-buat baris profiles begitu ada user baru di auth.users (role selalu 'admin' —
+-- di app ini SATU-SATUNYA jalur yang memanggil supabase.auth.signUp() adalah pembuatan akun
+-- admin dari Halaman Admin, lihat createAdminAccount di src/lib/auth.js; user biasa login
+-- lewat API beetri + whitelist NIP, tidak pernah membuat baris auth.users).
+-- nip & nama diambil dari raw_user_meta_data yang dikirim client saat signUp({ options: { data } }).
+-- Jalan dalam transaksi yang SAMA dengan insert auth.users, jadi tidak ada race condition
+-- foreign key seperti kalau insert profiles dilakukan terpisah dari client SETELAH signUp selesai.
+create or replace function public.handle_new_admin_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, nip, nama, email, role)
+  values (
+    new.id,
+    new.raw_user_meta_data ->> 'nip',
+    new.raw_user_meta_data ->> 'nama',
+    new.email,
+    'admin'
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_admin_user();
+
 -- 2. Helper function (security definer) supaya policy tidak rekursif saat cek role admin
 create or replace function public.is_admin()
 returns boolean
@@ -49,6 +81,28 @@ create policy profiles_select_own
 drop policy if exists profiles_select_all_for_admin on public.profiles;
 create policy profiles_select_all_for_admin
   on public.profiles for select
+  to authenticated
+  using (public.is_admin());
+
+-- CRUD akun admin dari Halaman Admin. Insert baris profiles untuk admin BARU sebenarnya
+-- dilakukan oleh trigger on_auth_user_created di atas (security definer, bypass RLS) —
+-- policy insert ini cuma jaga-jaga kalau ada kebutuhan insert manual lain di masa depan.
+drop policy if exists profiles_admin_insert on public.profiles;
+create policy profiles_admin_insert
+  on public.profiles for insert
+  to authenticated
+  with check (public.is_admin());
+
+drop policy if exists profiles_admin_update on public.profiles;
+create policy profiles_admin_update
+  on public.profiles for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists profiles_admin_delete on public.profiles;
+create policy profiles_admin_delete
+  on public.profiles for delete
   to authenticated
   using (public.is_admin());
 
