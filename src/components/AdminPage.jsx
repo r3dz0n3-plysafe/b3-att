@@ -3,7 +3,8 @@ import Swal from 'sweetalert2';
 import { addAllowedNip, fetchAllProfiles, fetchAllowedNips, removeAllowedNip, updateAllowedNip } from '../lib/auth.js';
 import { DURATION_OPTIONS, computeExpiresAt, isExpired } from '../lib/nipUtils.js';
 import EditNipModal from './EditNipModal.jsx';
-import { PencilIcon, PowerIcon, RefreshIcon, TrashIcon } from './icons.jsx';
+import UserGalleryModal from './UserGalleryModal.jsx';
+import { GalleryIcon, PencilIcon, PowerIcon, RefreshIcon, TrashIcon } from './icons.jsx';
 
 const roleBadgeClass = {
   admin: 'bg-blue-50 text-blue-600 border border-blue-200',
@@ -39,6 +40,7 @@ export default function AdminPage({ profile, onLogout }) {
   const [newDurationDays, setNewDurationDays] = useState('30');
   const [isAdding, setIsAdding] = useState(false);
   const [editingNip, setEditingNip] = useState(null);
+  const [galleryNip, setGalleryNip] = useState(null);
 
   useEffect(() => {
     loadUsers();
@@ -315,6 +317,13 @@ export default function AdminPage({ profile, onLogout }) {
                             <PencilIcon />
                           </ActionButton>
                           <ActionButton
+                            label="Lihat Galeri"
+                            colorClass="text-indigo-600 hover:bg-indigo-50"
+                            onClick={() => setGalleryNip(n)}
+                          >
+                            <GalleryIcon />
+                          </ActionButton>
+                          <ActionButton
                             label="Perpanjang 30 Hari"
                             colorClass="text-blue-600 hover:bg-blue-50"
                             onClick={() => handleExtendNip(n, 30)}
@@ -345,6 +354,15 @@ export default function AdminPage({ profile, onLogout }) {
           </div>
         </div>
       </div>
+
+      {galleryNip && (
+        <UserGalleryModal
+          nip={galleryNip.nip}
+          nama={galleryNip.nama}
+          photoLimit={galleryNip.photo_limit}
+          onClose={() => setGalleryNip(null)}
+        />
+      )}
 
       {editingNip && (
         <EditNipModal

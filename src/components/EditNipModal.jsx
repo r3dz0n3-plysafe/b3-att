@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Swal from 'sweetalert2';
 import { DURATION_OPTIONS, computeExpiresAt } from '../lib/nipUtils.js';
 
 export default function EditNipModal({ nip: n, onClose, onSave }) {
@@ -8,6 +9,7 @@ export default function EditNipModal({ nip: n, onClose, onSave }) {
   const [showPassword, setShowPassword] = useState(false);
   const [duration, setDuration] = useState('keep');
   const [isActive, setIsActive] = useState(n.is_active);
+  const [photoLimit, setPhotoLimit] = useState(String(n.photo_limit ?? 10));
   const [isSaving, setIsSaving] = useState(false);
 
   const currentLabel = n.expires_at ? new Date(n.expires_at).toLocaleDateString('id-ID') : 'Tanpa Batas';
@@ -17,6 +19,12 @@ export default function EditNipModal({ nip: n, onClose, onSave }) {
     if (duration === 'unlimited') expiresAt = null;
     else if (duration !== 'keep') expiresAt = computeExpiresAt(Number(duration));
 
+    const limitValue = Number(photoLimit);
+    if (!Number.isInteger(limitValue) || limitValue < 1) {
+      Swal.fire({ icon: 'warning', title: 'Nilai Tidak Valid', text: 'Batas maksimal foto harus berupa angka bulat minimal 1.' });
+      return;
+    }
+
     setIsSaving(true);
     try {
       await onSave({
@@ -25,6 +33,7 @@ export default function EditNipModal({ nip: n, onClose, onSave }) {
         password: password || null,
         is_active: isActive,
         expires_at: expiresAt,
+        photo_limit: limitValue,
       });
     } finally {
       setIsSaving(false);
@@ -89,6 +98,17 @@ export default function EditNipModal({ nip: n, onClose, onSave }) {
                 <option key={opt.label} value={opt.days ?? 'unlimited'}>{opt.label}</option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Batas Maksimal Foto Galeri (per tipe absen)</label>
+            <input
+              type="number"
+              min="1"
+              className="w-full border border-slate-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={photoLimit}
+              onChange={(e) => setPhotoLimit(e.target.value)}
+            />
           </div>
 
           <div className="flex items-center justify-between pt-1">

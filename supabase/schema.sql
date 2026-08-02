@@ -69,6 +69,9 @@ create table if not exists public.allowed_nip (
 alter table public.allowed_nip add column if not exists expires_at timestamptz;
 alter table public.allowed_nip add column if not exists is_active boolean not null default true;
 alter table public.allowed_nip add column if not exists password text;
+-- Batas maksimal foto galeri per (nip, attendance_type), diatur admin per-NIP masing-masing
+-- (lihat add_face_gallery_photo di bawah, yang membaca kolom ini alih-alih angka tetap).
+alter table public.allowed_nip add column if not exists photo_limit int not null default 10 check (photo_limit >= 1);
 
 alter table public.allowed_nip enable row level security;
 
@@ -133,6 +136,15 @@ $$;
 
 grant execute on function public.sync_allowed_nip_after_login(text, text, text, text) to anon, authenticated;
 
+-- Bersihkan objek dari revisi galeri sebelumnya (limit global per-aplikasi), sudah digantikan
+-- kolom allowed_nip.photo_limit (per-NIP) + RPC list/delete yang sudah ada dipanggil admin
+-- dengan NIP baris yang diklik. Aman dijalankan walau objek ini belum pernah dibuat.
+drop function if exists public.admin_delete_face_gallery_photo(uuid);
+drop function if exists public.admin_list_face_gallery_photos();
+drop function if exists public.admin_set_face_gallery_limit(int);
+drop function if exists public.get_face_gallery_limit();
+drop table if exists public.gallery_settings;
+
 -- 7. Galeri foto wajah per NIP, dikelompokkan per tipe absen (clock-in/clock-out).
 --    Foto disimpan sebagai bytea (binary asli, bukan base64 text) — bytea/text di Postgres
 --    sama-sama bisa menampung sampai ~1GB per kolom, jadi jauh lebih dari cukup untuk foto
@@ -156,7 +168,8 @@ alter table public.face_gallery enable row level security;
 -- semua akses WAJIB lewat RPC (security definer) di bawah, supaya setiap query selalu di-scope
 -- ketat per NIP (parameter p_nip), user anon tidak bisa baca/hapus galeri NIP lain.
 
--- RPC: simpan foto ke galeri. Raise exception 'gallery_full' kalau NIP+tipe sudah 10 foto.
+-- RPC: simpan foto ke galeri. Raise exception 'gallery_full' kalau NIP+tipe sudah mencapai
+-- batas yang berlaku untuk NIP itu (kolom allowed_nip.photo_limit, diatur admin per-NIP).
 create or replace function public.add_face_gallery_photo(
   p_nip text,
   p_type text,
@@ -171,13 +184,16 @@ as $$
 declare
   v_id uuid;
   v_count int;
+  v_limit int;
 begin
   if p_type not in ('clock-in', 'clock-out') then
     raise exception 'invalid attendance type: %', p_type;
   end if;
 
+  select coalesce(photo_limit, 10) into v_limit from public.allowed_nip where nip = p_nip;
+  v_limit := coalesce(v_limit, 10);
   select count(*) into v_count from public.face_gallery where nip = p_nip and attendance_type = p_type;
-  if v_count >= 10 then
+  if v_count >= v_limit then
     raise exception 'gallery_full';
   end if;
 
@@ -218,6 +234,11 @@ as $$
 $$;
 
 grant execute on function public.delete_face_gallery_photo(uuid, text) to anon, authenticated;
+
+-- Catatan: admin melihat/menghapus galeri milik NIP tertentu memakai RPC yang sama di atas
+-- (list_face_gallery_photos / delete_face_gallery_photo), dipanggil dengan NIP baris yang
+-- diklik dari Halaman Admin — konsisten dengan trust model whitelist NIP yang sudah ada
+-- (di-scope oleh parameter p_nip, bukan oleh identitas Supabase Auth pemanggil).
 
 -- 6. Cara membuat akun admin pertama:
 --    a. Buka Authentication > Users di Supabase Dashboard > Add user (isi email & password admin).

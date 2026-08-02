@@ -50,7 +50,7 @@ export async function isNipAllowed(nip) {
 export async function fetchAllowedNips() {
   const { data, error } = await supabase
     .from('allowed_nip')
-    .select('nip, nama, keterangan, password, expires_at, is_active, created_at')
+    .select('nip, nama, keterangan, password, expires_at, is_active, photo_limit, created_at')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data;
