@@ -4,16 +4,19 @@ import Swal from 'sweetalert2';
 import LoginView from './components/LoginView.jsx';
 import FaceDetectionView from './components/FaceDetectionView.jsx';
 import AttendanceView from './components/AttendanceView.jsx';
+import ProfileView from './components/ProfileView.jsx';
 import AdminPage from './components/AdminPage.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { fetchTodayScheduleLocation } from './lib/api.js';
 import { fetchOwnProfile, signOutAdmin } from './lib/auth.js';
 import { supabase } from './lib/supabase.js';
 import { saveUserSession, loadUserSession, clearUserSession } from './lib/userSession.js';
+import { useMyFacePhoto } from './lib/useMyFacePhoto.js';
 
 function App() {
   const [authToken, setAuthToken] = useState('');
   const [nip, setNip] = useState('');
+  const [userName, setUserName] = useState('');
   const [mainTab, setMainTab] = useState('face');
   const [faceCapture, setFaceCapture] = useState(null);
   const [scheduleLocation, setScheduleLocation] = useState(null);
@@ -23,6 +26,7 @@ function App() {
 
   const isUserLoggedIn = Boolean(authToken);
   const isAdminLoggedIn = Boolean(adminProfile);
+  const { photoUrl: navbarPhotoUrl } = useMyFacePhoto(authToken);
 
   // Pulihkan sesi admin (Supabase Auth) saat halaman dibuka/di-refresh.
   useEffect(() => {
@@ -44,6 +48,7 @@ function App() {
         if (userSession) {
           setAuthToken(userSession.token);
           setNip(userSession.nip);
+          setUserName(userSession.name || '');
         }
       }
       if (mounted) setCheckingSession(false);
@@ -64,11 +69,12 @@ function App() {
     navigate('/admin', { replace: true });
   }
 
-  async function handleUserLoginSuccess(token, nipValue) {
+  async function handleUserLoginSuccess(token, nipValue, nameValue) {
     setAuthToken(token);
     setNip(nipValue);
+    setUserName(nameValue || '');
     setMainTab('face');
-    saveUserSession({ token, nip: nipValue });
+    saveUserSession({ token, nip: nipValue, name: nameValue });
 
     // Update default lokasi dari jadwal hari ini (jika tersedia)
     try {
@@ -107,6 +113,7 @@ function App() {
       clearUserSession();
       setAuthToken('');
       setNip('');
+      setUserName('');
       setFaceCapture(null);
       setScheduleLocation(null);
       setMainTab('face');
@@ -161,18 +168,33 @@ function App() {
               <div className="max-w-7xl mx-auto w-full space-y-4">
                 {/* Top Header & Logout Bar */}
                 <div className="bg-white rounded-2xl p-3 md:p-4 shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-                    <div>
-                      <p className="text-xs text-slate-400 font-semibold uppercase">Status Sesi Login</p>
-                      <p className="text-sm font-bold text-slate-800">{nip ? `NIP: ${nip}` : 'Terautentikasi'}</p>
-                    </div>
-                  </div>
                   <button
-                    className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold py-2 px-3.5 rounded-xl transition-all flex items-center gap-1.5"
+                    type="button"
+                    className="group flex items-center gap-2 sm:gap-3 rounded-xl -m-2 p-2 hover:bg-slate-100 active:bg-slate-200 ring-1 ring-transparent hover:ring-slate-200 transition-all text-left cursor-pointer min-w-0 flex-1 sm:flex-initial"
+                    onClick={() => setMainTab('profile')}
+                    title="Buka Profil"
+                  >
+                    <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full overflow-hidden border-2 border-white shadow-sm bg-slate-200 flex items-center justify-center shrink-0 group-hover:ring-2 group-hover:ring-blue-400 transition-all">
+                      {navbarPhotoUrl ? (
+                        <img src={navbarPhotoUrl} alt="Foto Profil" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-base sm:text-lg text-slate-400">👤</span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-800 leading-tight truncate group-hover:text-blue-600 transition-colors">{userName || 'Terautentikasi'}</p>
+                      <p className="text-xs text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                        <span className="truncate">{nip ? `NIP: ${nip}` : 'Sesi Aktif'}</span>
+                      </p>
+                    </div>
+                    <span className="hidden sm:inline text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all text-sm ml-1 shrink-0">›</span>
+                  </button>
+                  <button
+                    className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold py-2 px-3.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0"
                     onClick={handleLogout}
                   >
-                    🚪 Logout / Keluar
+                    🚪 <span className="hidden sm:inline">Logout / Keluar</span><span className="sm:hidden">Keluar</span>
                   </button>
                 </div>
 
@@ -206,6 +228,10 @@ function App() {
                     scheduleLocation={scheduleLocation}
                     onNeedFace={() => setMainTab('face')}
                   />
+                </div>
+
+                <div className={mainTab === 'profile' ? '' : 'hidden'}>
+                  <ProfileView authToken={authToken} nip={nip} name={userName} />
                 </div>
               </div>
             </div>

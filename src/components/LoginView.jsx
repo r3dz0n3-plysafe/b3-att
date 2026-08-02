@@ -100,7 +100,7 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
           timer: 1500,
           showConfirmButton: false,
         });
-        onUserLoginSuccess(token, nip);
+        onUserLoginSuccess(token, nip, userName);
       } else {
         Swal.fire({ icon: 'error', title: 'Login Gagal', text: 'Periksa NIP, Password, atau Captcha Anda!' });
         loadCaptcha();

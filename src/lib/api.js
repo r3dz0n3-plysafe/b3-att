@@ -62,6 +62,56 @@ export async function uploadFacePhoto(token, blob) {
   return { ok: res.ok, rawText: text };
 }
 
+// Bentuk response endpoint ini belum pernah kita lihat contoh aslinya, jadi ditangani
+// secara defensif: kalau content-type JSON, coba beberapa nama field foto yang umum
+// (url absolut/data URL/base64 polos); kalau bukan JSON, anggap body-nya langsung binary image.
+export async function fetchMyFacePhoto(token) {
+  const res = await fetch(`${BASE_URL}/employee/my-face`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    const json = await res.json();
+    const raw =
+      json?.data?.photo_url ||
+      json?.data?.photo ||
+      json?.data?.face_photo ||
+      json?.photo_url ||
+      json?.photo ||
+      '';
+    if (!raw) return null;
+    return raw.startsWith('data:') || raw.startsWith('http') ? raw : `data:image/jpeg;base64,${raw}`;
+  }
+
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+// Diambil dari aksi `deleteFace` di panel admin lama (src/lib/employee.js), dipakai di sini
+// untuk hapus foto wajah milik sendiri (nip = milik user yang login).
+export async function deleteMyFacePhoto(token, nip) {
+  const res = await fetch(`${BASE_URL}/employee/face/${nip}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const text = await res.text();
+  return { ok: res.ok, rawText: text };
+}
+
+// Diambil dari aksi `verifyFace` di panel admin lama, dipakai di sini untuk menandai foto
+// milik sendiri sebagai terverifikasi (status: 'approved').
+export async function verifyMyFace(token, nip) {
+  const res = await fetch(`${BASE_URL}/employee/verify-face`, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ nip, status: "approved" }),
+  });
+  const text = await res.text();
+  return { ok: res.ok, rawText: text };
+}
+
 export async function submitAttendance({ token, type, blob, lat, lon, userAgent }) {
   const fd = new FormData();
   fd.append("photo", blob, "absensi_liveness.jpg");

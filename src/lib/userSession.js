@@ -14,9 +14,9 @@ function decodeJwtExpMs(token) {
   }
 }
 
-export function saveUserSession({ token, nip }) {
+export function saveUserSession({ token, nip, name }) {
   const expiresAt = decodeJwtExpMs(token) || Date.now() + DEFAULT_TTL_MS;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, nip, expiresAt }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, nip, name: name || '', expiresAt }));
 }
 
 export function loadUserSession() {
