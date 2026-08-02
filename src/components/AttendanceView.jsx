@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Swal from 'sweetalert2';
 import { submitAttendance } from '../lib/api.js';
-import { DEVICE_OPTIONS, DEVICE_USER_AGENTS } from '../lib/deviceUserAgents.js';
+import { DEVICE_OPTIONS, DEVICE_USER_AGENTS, formatUserAgent } from '../lib/deviceUserAgents.js';
 import { buildApiResponseHtml } from '../lib/apiResponseHtml.js';
 import { addFaceGalleryPhoto } from '../lib/gallery.js';
 
@@ -29,7 +29,16 @@ function isTrulySuccessful(ok, rawText) {
 
 export default function AttendanceView({ authToken, nip, faceCapture, scheduleLocation, onNeedFace }) {
   const [type, setType] = useState('clock-in');
-  const [device, setDevice] = useState('ios18');
+  const [device, setDevice] = useState('detected');
+
+  // Deteksi user agent perangkat asli yang sedang dipakai, diformat dengan
+  // algoritma yang sama seperti LIveAttendanceOld.js.
+  const detectedUserAgent = useMemo(() => formatUserAgent(navigator.userAgent), []);
+  const deviceOptionsWithDetected = useMemo(
+    () => [{ value: 'detected', label: `🔍 Perangkat Ini Terdeteksi (${detectedUserAgent})` }, ...DEVICE_OPTIONS],
+    [detectedUserAgent]
+  );
+  const resolvedUserAgent = device === 'detected' ? detectedUserAgent : formatUserAgent(DEVICE_USER_AGENTS[device]);
   const [lat, setLat] = useState('-6.314554');
   const [lon, setLon] = useState('106.986443');
   const [mapSrc, setMapSrc] = useState('');
@@ -118,7 +127,7 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
         blob: faceCapture.blob,
         lat,
         lon,
-        userAgent: DEVICE_USER_AGENTS[device],
+        userAgent: resolvedUserAgent,
       });
       const trueSuccess = isTrulySuccessful(ok, rawText);
       setAttRes(rawText);
@@ -196,13 +205,13 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Device ID Emulator</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Device ID</label>
               <select
                 className="w-full border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={device}
                 onChange={(e) => setDevice(e.target.value)}
               >
-                {DEVICE_OPTIONS.map((opt) => (
+                {deviceOptionsWithDetected.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
