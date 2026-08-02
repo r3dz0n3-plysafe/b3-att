@@ -3,13 +3,31 @@ import Swal from 'sweetalert2';
 import { submitAttendance } from '../lib/api.js';
 import { DEVICE_OPTIONS, DEVICE_USER_AGENTS } from '../lib/deviceUserAgents.js';
 import { buildApiResponseHtml } from '../lib/apiResponseHtml.js';
+import { addFaceGalleryPhoto } from '../lib/gallery.js';
 
 const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>";
 
 const MAX_RANDOM_RADIUS_M = 100;
+const FAILURE_KEYWORDS = ['gagal', 'error', 'invalid', 'failed', 'tolak', 'ditolak', 'salah', 'expired', 'kadaluwarsa'];
 
-export default function AttendanceView({ authToken, faceCapture, scheduleLocation, onNeedFace }) {
+// HTTP bisa 200 OK tapi body-nya sebenarnya menandakan gagal (false positive).
+// Anggap sukses HANYA kalau HTTP ok DAN tidak ada indikasi gagal di body response.
+function isTrulySuccessful(ok, rawText) {
+  if (!ok) return false;
+  try {
+    const json = JSON.parse(rawText);
+    if (json.success === false) return false;
+    if (typeof json.status === 'string' && /error|fail|gagal/i.test(json.status)) return false;
+    const message = String(json.message || json.error || json.msg || '').toLowerCase();
+    if (FAILURE_KEYWORDS.some((kw) => message.includes(kw))) return false;
+  } catch (e) {
+    // Bukan JSON valid, percaya status HTTP saja.
+  }
+  return true;
+}
+
+export default function AttendanceView({ authToken, nip, faceCapture, scheduleLocation, onNeedFace }) {
   const [type, setType] = useState('clock-in');
   const [device, setDevice] = useState('ios18');
   const [lat, setLat] = useState('-6.314554');
@@ -17,6 +35,8 @@ export default function AttendanceView({ authToken, faceCapture, scheduleLocatio
   const [mapSrc, setMapSrc] = useState('');
   const [attRes, setAttRes] = useState('-');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastSubmitSuccess, setLastSubmitSuccess] = useState(false);
+  const [isSavingGallery, setIsSavingGallery] = useState(false);
 
   const defaultLatRef = useRef(-6.314567);
   const defaultLonRef = useRef(106.986529);
@@ -100,18 +120,42 @@ export default function AttendanceView({ authToken, faceCapture, scheduleLocatio
         lon,
         userAgent: DEVICE_USER_AGENTS[device],
       });
+      const trueSuccess = isTrulySuccessful(ok, rawText);
       setAttRes(rawText);
+      setLastSubmitSuccess(trueSuccess);
       Swal.fire({
-        icon: ok ? 'success' : 'error',
-        title: ok ? 'Absensi Berhasil Dikirim' : 'Absensi Gagal Dikirim',
+        icon: trueSuccess ? 'success' : 'error',
+        title: trueSuccess ? 'Absensi Berhasil Dikirim' : 'Absensi Gagal Dikirim',
         html: buildApiResponseHtml(rawText),
         width: 640,
         confirmButtonText: 'Tutup',
       });
     } catch (err) {
+      setLastSubmitSuccess(false);
       Swal.fire({ icon: 'error', title: 'Error Submit', text: err.toString() });
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleSaveToGallery() {
+    if (!nip || !faceCapture) return;
+    setIsSavingGallery(true);
+    try {
+      await addFaceGalleryPhoto(nip, type, faceCapture.blob);
+      Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Foto berhasil disimpan ke Galeriku.', timer: 1500, showConfirmButton: false });
+    } catch (e) {
+      if (e.code === 'gallery_full') {
+        Swal.fire({
+          icon: 'error',
+          title: 'Galeri Penuh',
+          text: `Galeri untuk tipe "${type === 'clock-in' ? 'Hadir' : 'Pulang'}" sudah mencapai 10 foto. Hapus foto lama di tab Galeriku (Deteksi Wajah) terlebih dahulu.`,
+        });
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: e.message || e.toString() });
+      }
+    } finally {
+      setIsSavingGallery(false);
     }
   }
 
@@ -227,6 +271,16 @@ export default function AttendanceView({ authToken, faceCapture, scheduleLocatio
           >
             {isSubmitting ? '🔄 Mengirim Data Absensi...' : '🚀 Submit Attendance'}
           </button>
+
+          {lastSubmitSuccess && faceCapture && (
+            <button
+              className="w-full mt-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
+              onClick={handleSaveToGallery}
+              disabled={isSavingGallery}
+            >
+              {isSavingGallery ? '🔄 Menyimpan...' : '💾 Simpan ke Galeriku'}
+            </button>
+          )}
 
           <div className="mt-4">
             <details className="group bg-slate-50 border border-slate-200 rounded-xl p-3">

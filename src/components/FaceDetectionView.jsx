@@ -3,11 +3,12 @@ import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import Swal from 'sweetalert2';
 import { getEAR, getMAR, getEulerAngles, getFaceBounds } from '../lib/faceGeometry.js';
 import { uploadFacePhoto } from '../lib/api.js';
+import { addFaceGalleryPhoto, deleteFaceGalleryPhoto, listFaceGalleryPhotos } from '../lib/gallery.js';
 
 const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>";
 
-export default function FaceDetectionView({ authToken, onCapture, onReset, onGotoB3 }) {
+export default function FaceDetectionView({ authToken, nip, onCapture, onReset, onGotoB3 }) {
   // ==== Structural state (drives conditional rendering) ====
   const [activeMode, setActiveModeState] = useState('webcam');
   const [cameraOn, setCameraOn] = useState(false);
@@ -18,6 +19,10 @@ export default function FaceDetectionView({ authToken, onCapture, onReset, onGot
   const [resizeValue, setResizeValue] = useState('256');
   const [isCroppedUI, setIsCroppedUI] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [galleryPhotos, setGalleryPhotos] = useState([]);
+  const [isLoadingGallery, setIsLoadingGallery] = useState(false);
+  const [selectedGalleryId, setSelectedGalleryId] = useState(null);
+  const [isSavingToGallery, setIsSavingToGallery] = useState(false);
 
   // ==== DOM refs for hot-path (per-frame) updates ====
   const videoRef = useRef(null);
@@ -434,6 +439,114 @@ export default function FaceDetectionView({ authToken, onCapture, onReset, onGot
     if (uploadedImageElementRef.current) processUploadedPhoto(uploadedImageElementRef.current);
   }
 
+  async function loadGallery() {
+    if (!nip) return;
+    setIsLoadingGallery(true);
+    try {
+      const photos = await listFaceGalleryPhotos(nip);
+      setGalleryPhotos(photos);
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Gagal Memuat Galeri', text: e.message || e.toString() });
+    } finally {
+      setIsLoadingGallery(false);
+    }
+  }
+
+  function handleTabGallery() {
+    setActiveMode('gallery');
+    if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current);
+    setSelectedGalleryId(null);
+    loadGallery();
+  }
+
+  async function handleDeleteGalleryPhoto(id) {
+    const result = await Swal.fire({
+      title: 'Hapus Foto?',
+      text: 'Foto ini akan dihapus permanen dari Galeriku.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      confirmButtonText: 'Ya, Hapus',
+    });
+    if (!result.isConfirmed) return;
+    try {
+      await deleteFaceGalleryPhoto(id, nip);
+      setGalleryPhotos((prev) => prev.filter((p) => p.id !== id));
+      setSelectedGalleryId((prevId) => (prevId === id ? null : prevId));
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: e.message || e.toString() });
+    }
+  }
+
+  async function handleSaveToGallery() {
+    if (!currentBlobRef.current) {
+      Swal.fire({ icon: 'warning', title: 'Belum Ada Foto', text: 'Ambil/gunakan foto wajah terlebih dahulu.' });
+      return;
+    }
+    if (!nip) {
+      Swal.fire({ icon: 'warning', title: 'Sesi Tidak Valid', text: 'Silakan login kembali.' });
+      return;
+    }
+
+    const { value: type } = await Swal.fire({
+      title: 'Simpan ke Galeriku',
+      text: 'Pilih kategori tipe absen untuk foto ini:',
+      input: 'select',
+      inputOptions: { 'clock-in': 'Hadir (Clock-In)', 'clock-out': 'Pulang (Clock-Out)' },
+      inputPlaceholder: 'Pilih tipe absen',
+      showCancelButton: true,
+      confirmButtonText: 'Simpan',
+      cancelButtonText: 'Batal',
+    });
+    if (!type) return;
+
+    setIsSavingToGallery(true);
+    try {
+      await addFaceGalleryPhoto(nip, type, currentBlobRef.current);
+      Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Foto berhasil disimpan ke Galeriku.', timer: 1500, showConfirmButton: false });
+    } catch (e) {
+      if (e.code === 'gallery_full') {
+        Swal.fire({
+          icon: 'error',
+          title: 'Galeri Penuh',
+          text: `Galeri untuk tipe "${type === 'clock-in' ? 'Hadir' : 'Pulang'}" sudah mencapai 10 foto. Hapus foto lama di tab Galeriku terlebih dahulu.`,
+        });
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: e.message || e.toString() });
+      }
+    } finally {
+      setIsSavingToGallery(false);
+    }
+  }
+
+  async function handleUseGalleryPhoto() {
+    const photo = galleryPhotos.find((p) => p.id === selectedGalleryId);
+    if (!photo) {
+      Swal.fire({ icon: 'warning', title: 'Pilih Foto', text: 'Pilih salah satu foto dari Galeriku terlebih dahulu.' });
+      return;
+    }
+
+    const blob = await (await fetch(photo.base64)).blob();
+    currentBase64Ref.current = photo.base64;
+    currentBlobRef.current = blob;
+    setIsCropped(true);
+    if (croppedImgRef.current) croppedImgRef.current.src = photo.base64;
+    if (blobInfoRef.current) {
+      blobInfoRef.current.innerHTML = `Blob siap: <span class="font-bold text-slate-800">${(blob.size / 1024).toFixed(2)} KB</span> <span class="text-slate-400">(dari Galeriku)</span>`;
+    }
+    updateB3FaceStatus(currentBase64Ref.current);
+    if (actionInstrRef.current) {
+      actionInstrRef.current.innerHTML = "Berhasil!<br><span class='text-xs'>Lanjut Absensi B3</span>";
+    }
+    if (statusBoxRef.current) {
+      statusBoxRef.current.classList.replace('bg-blue-50', 'bg-green-100');
+      statusBoxRef.current.classList.replace('border-blue-200', 'border-green-300');
+    }
+    if (actionInstrRef.current) {
+      actionInstrRef.current.classList.replace('text-blue-700', 'text-green-700');
+    }
+  }
+
   function resetCropState(triggerRedetect) {
     setIsCropped(false);
     currentLandmarksRef.current = null;
@@ -472,6 +585,10 @@ export default function FaceDetectionView({ authToken, onCapture, onReset, onGot
   }
 
   function handleCapture() {
+    if (activeModeRef.current === 'gallery') {
+      handleUseGalleryPhoto();
+      return;
+    }
     if (isCroppedRef.current) return;
     if (!currentLandmarksRef.current) {
       Swal.fire({ icon: 'error', title: 'Gagal', text: 'Wajah tidak terdeteksi!' });
@@ -544,6 +661,12 @@ export default function FaceDetectionView({ authToken, onCapture, onReset, onGot
           >
             Upload Foto
           </button>
+          <button
+            className={`flex-1 py-2 text-sm rounded-lg transition-all ${activeMode === 'gallery' ? 'font-bold bg-white text-blue-600 shadow-sm' : 'font-semibold text-slate-600'}`}
+            onClick={handleTabGallery}
+          >
+            Galeriku
+          </button>
         </div>
 
         <div className={`relative w-full aspect-video bg-slate-900 rounded-xl overflow-hidden shadow-inner mb-4 ${activeMode === 'webcam' ? '' : 'hidden'}`}>
@@ -609,6 +732,53 @@ export default function FaceDetectionView({ authToken, onCapture, onReset, onGot
           <canvas ref={uploadCanvasRef} className="absolute top-0 left-0 w-full h-full pointer-events-none z-0" />
         </div>
 
+        <div className={`relative w-full aspect-video bg-slate-50 border-2 border-slate-200 rounded-xl overflow-y-auto shadow-inner mb-4 p-3 ${activeMode === 'gallery' ? '' : 'hidden'}`}>
+          {isLoadingGallery && (
+            <div className="flex items-center justify-center h-full text-slate-400 text-sm font-semibold">Memuat galeri...</div>
+          )}
+          {!isLoadingGallery && galleryPhotos.length === 0 && (
+            <div className="flex items-center justify-center h-full text-slate-400 text-sm font-semibold text-center px-4">
+              Belum ada foto tersimpan.<br />Simpan foto dari hasil crop untuk mengisi Galeriku.
+            </div>
+          )}
+          {!isLoadingGallery && galleryPhotos.length > 0 && (
+            <div className="space-y-4">
+              {['clock-in', 'clock-out'].map((t) => {
+                const photos = galleryPhotos.filter((p) => p.type === t);
+                if (photos.length === 0) return null;
+                return (
+                  <div key={t}>
+                    <p className="text-xs font-bold uppercase text-slate-500 mb-2">
+                      {t === 'clock-in' ? '📥 Hadir (Clock-In)' : '📤 Pulang (Clock-Out)'} ({photos.length}/10)
+                    </p>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                      {photos.map((p) => (
+                        <div key={p.id} className="relative group">
+                          <button
+                            type="button"
+                            className={`w-full aspect-square rounded-lg overflow-hidden border-2 transition-all ${selectedGalleryId === p.id ? 'border-blue-600 ring-2 ring-blue-300' : 'border-slate-200 hover:border-blue-300'}`}
+                            onClick={() => setSelectedGalleryId(p.id)}
+                          >
+                            <img src={p.base64} className="w-full h-full object-cover" alt="Galeri" />
+                          </button>
+                          <button
+                            type="button"
+                            className="absolute -top-1.5 -right-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteGalleryPhoto(p.id); }}
+                            title="Hapus foto"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Metrik Ringkas */}
         <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4">
           <div className="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
@@ -639,7 +809,7 @@ export default function FaceDetectionView({ authToken, onCapture, onReset, onGot
 
         {!isCroppedUI && (
           <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-3 flex items-center justify-center gap-2 shadow-sm" onClick={handleCapture}>
-            Capture
+            {activeMode === 'upload' || activeMode === 'gallery' ? 'Gunakan Gambar ini' : 'Capture'}
           </button>
         )}
         {isCroppedUI && (
@@ -689,6 +859,16 @@ export default function FaceDetectionView({ authToken, onCapture, onReset, onGot
             disabled={isSavingProfile}
           >
             {isSavingProfile ? '🔄 Menyimpan...' : '🖼️ Simpan sebagai Profile Picture'}
+          </button>
+        )}
+
+        {isCroppedUI && (
+          <button
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md mb-3 flex items-center justify-center gap-2 disabled:opacity-60"
+            onClick={handleSaveToGallery}
+            disabled={isSavingToGallery}
+          >
+            {isSavingToGallery ? '🔄 Menyimpan...' : '💾 Simpan ke Galeriku'}
           </button>
         )}
 

@@ -180,6 +180,7 @@ function App() {
                 <div className={mainTab === 'face' ? '' : 'hidden'}>
                   <FaceDetectionView
                     authToken={authToken}
+                    nip={nip}
                     onCapture={(base64, blob) => setFaceCapture({ base64, blob })}
                     onReset={() => setFaceCapture(null)}
                     onGotoB3={() => setMainTab('b3')}
@@ -189,6 +190,7 @@ function App() {
                 <div className={mainTab === 'b3' ? '' : 'hidden'}>
                   <AttendanceView
                     authToken={authToken}
+                    nip={nip}
                     faceCapture={faceCapture}
                     scheduleLocation={scheduleLocation}
                     onNeedFace={() => setMainTab('face')}
