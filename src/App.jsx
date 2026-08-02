@@ -9,6 +9,7 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { fetchTodayScheduleLocation } from './lib/api.js';
 import { fetchOwnProfile, signOutAdmin } from './lib/auth.js';
 import { supabase } from './lib/supabase.js';
+import { saveUserSession, loadUserSession, clearUserSession } from './lib/userSession.js';
 
 function App() {
   const [authToken, setAuthToken] = useState('');
@@ -36,6 +37,14 @@ function App() {
         } catch (e) {
           console.error('Gagal memuat profil admin', e);
         }
+      } else if (mounted) {
+        // Belum ada sesi admin. Cek sesi user biasa (token beetri) di local storage —
+        // kalau masih ada dan belum expired, langsung anggap sudah login (tidak perlu ulang).
+        const userSession = loadUserSession();
+        if (userSession) {
+          setAuthToken(userSession.token);
+          setNip(userSession.nip);
+        }
       }
       if (mounted) setCheckingSession(false);
     })();
@@ -59,6 +68,7 @@ function App() {
     setAuthToken(token);
     setNip(nipValue);
     setMainTab('face');
+    saveUserSession({ token, nip: nipValue });
 
     // Update default lokasi dari jadwal hari ini (jika tersedia)
     try {
@@ -94,6 +104,7 @@ function App() {
         setAdminProfile(null);
       }
 
+      clearUserSession();
       setAuthToken('');
       setNip('');
       setFaceCapture(null);

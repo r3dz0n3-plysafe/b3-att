@@ -9,4 +9,9 @@ if (!supabaseUrl || !supabasePublishableKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabasePublishableKey);
+// persistSession: false -> sesi admin (Supabase Auth) sengaja TIDAK disimpan di local storage,
+// jadi setiap refresh/buka tab baru admin wajib login ulang (beda dengan sesi user biasa yang
+// memang sengaja disimpan, lihat src/lib/userSession.js).
+export const supabase = createClient(supabaseUrl, supabasePublishableKey, {
+  auth: { persistSession: false },
+});
