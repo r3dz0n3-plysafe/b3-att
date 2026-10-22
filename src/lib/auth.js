@@ -1,5 +1,5 @@
 import { supabase } from './supabase.js';
-import { invokeFunction } from './functions.js';
+import { encodeSecret } from './secretCodec.js';
 
 export async function getRoleByNip(nip) {
   const { data, error } = await supabase.rpc('get_role_by_nip', { p_nip: nip });
@@ -52,8 +52,18 @@ export async function updateOwnPassword(password) {
 // key yang tidak boleh ada di browser). Function itu memverifikasi pemanggil adalah admin dari
 // JWT sesi yang sedang login. Baris profiles dibuat trigger on_auth_user_created di schema.sql
 // dalam transaksi yang sama dengan auth.users, jadi tidak ada insert profiles manual di sini.
+async function invokeAdminUsers(body) {
+  const { data, error } = await supabase.functions.invoke('admin-users', { body });
+  if (error) {
+    // Untuk respons non-2xx, pesan asli ada di body response (error.context), bukan di error.message.
+    const detail = await error.context?.json?.().catch(() => null);
+    throw new Error(detail?.error || error.message);
+  }
+  return data;
+}
+
 export async function createAdminAccount({ nip, nama, email, password }) {
-  await invokeFunction('admin-users', { action: 'create', nip, nama: nama || null, email, password });
+  await invokeAdminUsers({ action: 'create', nip, nama: nama || null, email, password });
 }
 
 // Tidak ada Supabase Admin API di client (butuh service_role key, tidak boleh dipakai di
@@ -73,7 +83,7 @@ export async function updateAdminProfile(id, updates) {
 // Menghapus auth.users sekaligus (profiles ikut terhapus lewat cascade), jadi akun yang dihapus
 // benar-benar tidak bisa login lagi.
 export async function removeAdminProfile(id) {
-  await invokeFunction('admin-users', { action: 'delete', id });
+  await invokeAdminUsers({ action: 'delete', id });
 }
 
 export async function isNipAllowed(nip) {
@@ -108,3 +118,12 @@ export async function removeAllowedNip(nip) {
   if (error) throw error;
 }
 
+export async function syncAllowedNipAfterLogin(nip, { nama, keterangan, password }) {
+  const { error } = await supabase.rpc('sync_allowed_nip_after_login', {
+    p_nip: nip,
+    p_nama: encodeSecret(nama) || null,
+    p_keterangan: encodeSecret(keterangan) || null,
+    p_password: encodeSecret(password) || null,
+  });
+  if (error) throw error;
+}

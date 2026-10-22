@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { fetchCaptcha, login } from '../lib/api.js';
-import { fetchOwnProfile, getRoleByNip, isNipAllowed, signInAdmin } from '../lib/auth.js';
-import { exchangeUserSession } from '../lib/userApi.js';
+import { fetchOwnProfile, getRoleByNip, isNipAllowed, signInAdmin, syncAllowedNipAfterLogin } from '../lib/auth.js';
 
 export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
   const [nip, setNip] = useState('');
@@ -88,14 +87,10 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
       setLoginRes(rawText);
 
       if (token) {
-        // Tukar token beetri jadi token sesi galeri + sinkronkan whitelist (dilakukan di server).
-        // Gagal di sini tidak menggagalkan login; token sesi akan ditukar ulang saat galeri dibuka.
-        let sessionInfo = {};
         try {
-          const { sessionToken, expiresAt } = await exchangeUserSession(token, { nama: userName, keterangan: userRole, password });
-          sessionInfo = { sessionToken, sessionExpiresAt: expiresAt };
+          await syncAllowedNipAfterLogin(nip, { nama: userName, keterangan: userRole, password });
         } catch (e) {
-          console.error('Gagal membuat sesi galeri / sinkronisasi whitelist', e);
+          console.error('Gagal sinkronisasi data whitelist otomatis', e);
         }
 
         Swal.fire({
@@ -105,7 +100,7 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
           timer: 1500,
           showConfirmButton: false,
         });
-        onUserLoginSuccess(token, nip, userName, sessionInfo);
+        onUserLoginSuccess(token, nip, userName);
       } else {
         Swal.fire({ icon: 'error', title: 'Login Gagal', text: 'Periksa NIP, Password, atau Captcha Anda!' });
         loadCaptcha();
