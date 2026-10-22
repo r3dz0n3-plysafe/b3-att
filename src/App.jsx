@@ -70,12 +70,12 @@ function App() {
     navigate('/admin', { replace: true });
   }
 
-  async function handleUserLoginSuccess(token, nipValue, nameValue) {
+  async function handleUserLoginSuccess(token, nipValue, nameValue, sessionInfo = {}) {
     setAuthToken(token);
     setNip(nipValue);
     setUserName(nameValue || '');
     setMainTab('face');
-    saveUserSession({ token, nip: nipValue, name: nameValue });
+    saveUserSession({ token, nip: nipValue, name: nameValue, ...sessionInfo });
 
     // Update default lokasi dari jadwal hari ini (jika tersedia)
     try {

@@ -199,7 +199,11 @@ as $$
   where nip = p_nip;
 $$;
 
-grant execute on function public.sync_allowed_nip_after_login(text, text, text, text) to anon, authenticated;
+-- Hanya service_role (Cloudflare Worker worker/user-api.js) yang boleh memanggil ini, SETELAH
+-- memverifikasi token beetri milik NIP tersebut. Kalau dibuka ke anon, siapa pun yang menebak NIP
+-- bisa menimpa keterangan & password baris orang lain.
+revoke execute on function public.sync_allowed_nip_after_login(text, text, text, text) from public, anon, authenticated;
+grant execute on function public.sync_allowed_nip_after_login(text, text, text, text) to service_role;
 
 -- Bersihkan objek dari revisi galeri sebelumnya (limit global per-aplikasi), sudah digantikan
 -- kolom allowed_nip.photo_limit (per-NIP) + RPC list/delete yang sudah ada dipanggil admin
@@ -271,7 +275,12 @@ begin
 end;
 $$;
 
-grant execute on function public.add_face_gallery_photo(text, text, text, text) to anon, authenticated;
+-- Seluruh RPC galeri hanya untuk service_role (Cloudflare Worker worker/user-api.js), yang
+-- menentukan NIP dari token sesi terverifikasi — BUKAN dari parameter yang dikirim browser.
+-- Dibuka ke anon berarti foto wajah (data biometrik) NIP mana pun bisa dibaca/dihapus hanya
+-- dengan menebak NIP-nya.
+revoke execute on function public.add_face_gallery_photo(text, text, text, text) from public, anon, authenticated;
+grant execute on function public.add_face_gallery_photo(text, text, text, text) to service_role;
 
 -- RPC: daftar foto milik satu NIP (dikembalikan sebagai base64 supaya langsung dipakai di <img>),
 -- diurutkan terbaru dulu.
@@ -287,7 +296,8 @@ as $$
   order by created_at desc;
 $$;
 
-grant execute on function public.list_face_gallery_photos(text) to anon, authenticated;
+revoke execute on function public.list_face_gallery_photos(text) from public, anon, authenticated;
+grant execute on function public.list_face_gallery_photos(text) to service_role;
 
 -- RPC: hapus 1 foto galeri milik NIP tertentu (parameter p_nip mencegah hapus punya NIP lain).
 create or replace function public.delete_face_gallery_photo(p_id uuid, p_nip text)
@@ -299,12 +309,11 @@ as $$
   delete from public.face_gallery where id = p_id and nip = p_nip;
 $$;
 
-grant execute on function public.delete_face_gallery_photo(uuid, text) to anon, authenticated;
+revoke execute on function public.delete_face_gallery_photo(uuid, text) from public, anon, authenticated;
+grant execute on function public.delete_face_gallery_photo(uuid, text) to service_role;
 
--- Catatan: admin melihat/menghapus galeri milik NIP tertentu memakai RPC yang sama di atas
--- (list_face_gallery_photos / delete_face_gallery_photo), dipanggil dengan NIP baris yang
--- diklik dari Halaman Admin — konsisten dengan trust model whitelist NIP yang sudah ada
--- (di-scope oleh parameter p_nip, bukan oleh identitas Supabase Auth pemanggil).
+-- Catatan: admin melihat/menghapus galeri milik NIP tertentu lewat Worker yang sama, dengan JWT
+-- sesi admin (diverifikasi is_admin()) dan NIP target dari parameter.
 
 -- 7. Cara membuat akun admin pertama (admin berikutnya dibuat dari Halaman Admin):
 --    a. Buka Authentication > Users di Supabase Dashboard > Add user (isi email & password admin).

@@ -14,9 +14,20 @@ function decodeJwtExpMs(token) {
   }
 }
 
-export function saveUserSession({ token, nip, name }) {
+// sessionToken/sessionExpiresAt: token sesi dari Worker user-api (lihat src/lib/userApi.js),
+// dipakai untuk akses galeri. Opsional — kalau kosong/kedaluwarsa, ditukar ulang dari `token`.
+export function saveUserSession({ token, nip, name, sessionToken = '', sessionExpiresAt = 0 }) {
   const expiresAt = decodeJwtExpMs(token) || Date.now() + DEFAULT_TTL_MS;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, nip, name: name || '', expiresAt }));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ token, nip, name: name || '', expiresAt, sessionToken, sessionExpiresAt }),
+  );
+}
+
+export function saveUserSessionToken(sessionToken, sessionExpiresAt) {
+  const current = loadUserSession();
+  if (!current) return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, sessionToken, sessionExpiresAt }));
 }
 
 export function loadUserSession() {

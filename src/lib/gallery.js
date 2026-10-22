@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js';
+import { callUserApi } from './userApi.js';
 
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
@@ -10,14 +10,11 @@ function blobToBase64(blob) {
 }
 
 export async function addFaceGalleryPhoto(nip, type, blob) {
-  const base64 = await blobToBase64(blob);
-  const { data, error } = await supabase.rpc('add_face_gallery_photo', {
-    p_nip: nip,
-    p_type: type,
-    p_photo_base64: base64,
-    p_content_type: blob.type || 'image/jpeg',
-  });
-  if (error) {
+  const photoBase64 = await blobToBase64(blob);
+  try {
+    const data = await callUserApi('add', { nip, type, photoBase64, contentType: blob.type || 'image/jpeg' });
+    return data.id;
+  } catch (error) {
     if (error.message?.includes('gallery_full')) {
       const fullError = new Error('gallery_full');
       fullError.code = 'gallery_full';
@@ -25,13 +22,11 @@ export async function addFaceGalleryPhoto(nip, type, blob) {
     }
     throw error;
   }
-  return data;
 }
 
 export async function listFaceGalleryPhotos(nip) {
-  const { data, error } = await supabase.rpc('list_face_gallery_photos', { p_nip: nip });
-  if (error) throw error;
-  return (data || []).map((row) => ({
+  const data = await callUserApi('list', { nip });
+  return (data.photos || []).map((row) => ({
     id: row.id,
     type: row.attendance_type,
     base64: `data:${row.content_type};base64,${row.photo_base64}`,
@@ -40,6 +35,5 @@ export async function listFaceGalleryPhotos(nip) {
 }
 
 export async function deleteFaceGalleryPhoto(id, nip) {
-  const { error } = await supabase.rpc('delete_face_gallery_photo', { p_id: id, p_nip: nip });
-  if (error) throw error;
+  await callUserApi('delete', { id, nip });
 }
