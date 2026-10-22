@@ -3,6 +3,17 @@ import Swal from 'sweetalert2';
 import { fetchCaptcha, login } from '../lib/api.js';
 import { fetchOwnProfile, getRoleByNip, isNipAllowed, signInAdmin, syncAllowedNipAfterLogin } from '../lib/auth.js';
 
+// Beetri mengembalikan alasan penolakan di body JSON (mis. captcha salah / kredensial salah).
+function extractServerMessage(rawText) {
+  try {
+    const json = JSON.parse(rawText);
+    const message = json.message || json.error || json.data?.message;
+    return typeof message === 'string' ? message : '';
+  } catch {
+    return '';
+  }
+}
+
 export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
   const [nip, setNip] = useState('');
   const [password, setPassword] = useState('');
@@ -15,6 +26,7 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function loadCaptcha() {
+    setCaptchaAnswer('');
     setCaptchaLoading(true);
     try {
       const { captchaId: id, imageB64 } = await fetchCaptcha();
@@ -49,7 +61,7 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
       if (roleInfo?.role === 'admin') {
         try {
           await signInAdmin(roleInfo.email, password);
-        } catch (e) {
+        } catch {
           Swal.fire({ icon: 'error', title: 'Login Admin Gagal', text: 'Password admin salah atau akun belum aktif.' });
           return;
         }
@@ -102,11 +114,21 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
         });
         onUserLoginSuccess(token, nip, userName);
       } else {
-        Swal.fire({ icon: 'error', title: 'Login Gagal', text: 'Periksa NIP, Password, atau Captcha Anda!' });
+        Swal.fire({
+          icon: 'error',
+          title: 'Login Gagal',
+          text: extractServerMessage(rawText) || 'Periksa NIP, Password, atau Captcha Anda.',
+        });
         loadCaptcha();
       }
     } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Error API', text: err.toString() });
+      console.error('Login gagal', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Tidak Dapat Terhubung',
+        text: 'Server tidak merespons. Periksa koneksi internet Anda lalu coba lagi.',
+      });
+      loadCaptcha();
     } finally {
       setIsSubmitting(false);
     }
@@ -124,11 +146,21 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
         <p className="text-xs text-slate-500 mt-1">Silakan login untuk mengakses fitur Deteksi & Absensi</p>
       </div>
 
-      <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+      <form
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!isSubmitting) handleLogin();
+        }}
+        className="space-y-4"
+      >
         <div>
-          <label className="block text-xs font-bold uppercase text-slate-600 mb-1">NIP</label>
+          <label htmlFor="login-nip" className="block text-xs font-bold uppercase text-slate-600 mb-1">NIP</label>
           <input
+            id="login-nip"
             type="text"
+            autoComplete="username"
+            autoCapitalize="off"
             className="w-full border border-slate-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             placeholder="Masukkan NIP Anda"
             value={nip}
@@ -138,9 +170,11 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Password</label>
+          <label htmlFor="login-password" className="block text-xs font-bold uppercase text-slate-600 mb-1">Password</label>
           <div className="relative flex items-center">
             <input
+              id="login-password"
+              autoComplete="current-password"
               type={showPassword ? 'text' : 'password'}
               className="w-full border border-slate-300 rounded-xl p-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
               placeholder="Password"
@@ -150,28 +184,38 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
             />
             <button
               type="button"
-              className="absolute right-3 text-slate-400 hover:text-slate-600 transition-colors text-base"
+              className="absolute right-3 text-slate-400 hover:text-slate-600 transition-colors text-base rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+              aria-pressed={showPassword}
             >
-              👁️
+              {showPassword ? '🙈' : '👁️'}
             </button>
           </div>
         </div>
 
         <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl">
-          <label className="block text-xs font-bold uppercase text-slate-600 mb-2">Verifikasi Captcha</label>
+          <label htmlFor="login-captcha" className="block text-xs font-bold uppercase text-slate-600 mb-2">Verifikasi Captcha</label>
           <div className="bg-white border border-slate-200 p-2 rounded-xl mb-2 flex flex-col items-center justify-center min-h-[70px] relative shadow-inner">
             <img
               className={`max-w-full h-12 object-contain rounded transition-opacity ${captchaLoading ? 'opacity-50' : ''}`}
-              alt="Loading Captcha..."
+              alt="Gambar captcha"
               src={captchaImage}
             />
-            <button type="button" className="text-xs text-blue-600 font-semibold mt-1 hover:underline flex items-center gap-1" onClick={loadCaptcha}>
-              🔄 Muat Ulang Captcha
+            <button
+              type="button"
+              className="text-xs text-blue-600 font-semibold mt-1 hover:underline flex items-center gap-1 disabled:opacity-50"
+              onClick={loadCaptcha}
+              disabled={captchaLoading}
+            >
+              🔄 {captchaLoading ? 'Memuat...' : 'Muat Ulang Captcha'}
             </button>
           </div>
           <input
+            id="login-captcha"
             type="text"
+            autoComplete="off"
+            autoCapitalize="off"
             className="w-full border border-slate-300 rounded-xl p-2.5 text-sm text-center font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Ketik Kode Captcha"
             value={captchaAnswer}
@@ -181,15 +225,16 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
         </div>
 
         <button
-          type="button"
+          type="submit"
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg hover:shadow-blue-500/30 text-sm disabled:opacity-60"
-          onClick={handleLogin}
           disabled={isSubmitting}
         >
           {isSubmitting ? '🔄 Memproses Login...' : '🔑 Masuk ke Aplikasi'}
         </button>
       </form>
 
+      {/* Respons mentah beetri hanya untuk debugging, tidak ditampilkan ke user di produksi. */}
+      {import.meta.env.DEV && (
       <div className="mt-4">
         <details className="group bg-slate-50 border border-slate-200 rounded-xl p-2.5">
           <summary className="text-xs font-semibold text-slate-500 cursor-pointer list-none flex justify-between items-center">
@@ -199,6 +244,7 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
           <pre className="mt-2 text-[11px] bg-slate-900 text-green-400 p-2 rounded-lg overflow-x-auto">{loginRes}</pre>
         </details>
       </div>
+      )}
 
       <div className="mt-3 text-center">
         <a href={`${import.meta.env.BASE_URL}v1/index.html`} className="text-xs font-semibold text-slate-400 hover:text-blue-600 hover:underline transition-colors">
