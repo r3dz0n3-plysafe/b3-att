@@ -13,6 +13,7 @@ import { fetchOwnProfile, signOutAdmin } from './lib/auth.js';
 import { supabase } from './lib/supabase.js';
 import { saveUserSession, loadUserSession, clearUserSession } from './lib/userSession.js';
 import { useMyFacePhoto } from './lib/useMyFacePhoto.js';
+import { isDemoToken } from './lib/demo.js';
 
 function App() {
   const [authToken, setAuthToken] = useState('');
@@ -26,6 +27,7 @@ function App() {
   const navigate = useNavigate();
 
   const isUserLoggedIn = Boolean(authToken);
+  const isDemoSession = isDemoToken(authToken);
   const isAdminLoggedIn = Boolean(adminProfile);
   const { photoUrl: navbarPhotoUrl } = useMyFacePhoto(authToken);
 
@@ -169,6 +171,11 @@ function App() {
           <ProtectedRoute isAllowed={isUserLoggedIn} redirectTo={isAdminLoggedIn ? '/admin' : '/login'}>
             <div className="bg-slate-200 min-h-screen p-3 md:p-6 font-sans text-slate-800 flex flex-col justify-center">
               <div className="max-w-7xl mx-auto w-full space-y-4">
+                {isDemoSession && (
+                  <div role="status" className="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl px-4 py-2.5 text-xs font-semibold">
+                    🧪 Mode Demo: seluruh data (absen, foto, jadwal) hanya simulasi dan tidak dikirim ke sistem absensi.
+                  </div>
+                )}
                 {/* Top Header & Logout Bar */}
                 <div className="bg-white rounded-2xl p-3 md:p-4 shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-3">
                   <button

@@ -23,7 +23,23 @@ Situs live (GitHub Pages): https://r3dz0n3-plysafe.github.io/b3-att/
 - Login dengan NIP/email + password (Supabase Auth). Sesi admin sengaja tidak disimpan, jadi refresh = login ulang.
 - Kelola whitelist NIP: tambah/ubah/hapus, aktif/nonaktif, tanggal kedaluwarsa, batas foto galeri.
 - Lihat dan hapus galeri foto milik NIP tertentu.
+- Buat **akun demo** (lihat bagian di bawah).
 - Kelola akun admin: tambah, ubah, hapus, kirim email reset password, ganti password sendiri.
+
+## Akun demo
+
+Untuk memperkenalkan aplikasi tanpa memakai akun beetri asli, admin bisa membuat NIP demo:
+
+1. Halaman Admin > Whitelist NIP User, isi NIP fiktif (mis. `DEMO001`) dan nama.
+2. Centang **Akun demo (tanpa beetri)** dan isi password demo, lalu **+ Tambah NIP**.
+   (Akun biasa bisa dijadikan demo lewat tombol Edit > Akun Demo.)
+3. Bagikan NIP dan password itu. Login demo tidak memakai captcha dan **tidak menghubungi beetri**.
+
+Di sesi demo, jadwal, upload/lihat/hapus/verifikasi foto, dan absen disimulasikan di browser
+(`src/lib/demo.js` dan cabang `isDemoToken` di `src/lib/api.js`) dan tidak dikirim ke sistem absensi.
+Banner "Mode Demo" tampil di atas halaman. Foto profil demo hanya disimpan di `sessionStorage` tab itu.
+Akun demo tidak ikut disinkronkan dari beetri (`sync_allowed_nip_after_login` melewatinya).
+Jangan memakai NIP pegawai sungguhan sebagai akun demo, dan anggap password demo bersifat publik.
 
 ## Arsitektur singkat
 

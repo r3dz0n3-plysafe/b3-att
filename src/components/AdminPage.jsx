@@ -59,6 +59,8 @@ export default function AdminPage({ profile, onLogout }) {
   const [newNip, setNewNip] = useState('');
   const [newNama, setNewNama] = useState('');
   const [newDurationDays, setNewDurationDays] = useState('30');
+  const [newIsDemo, setNewIsDemo] = useState(false);
+  const [newDemoPassword, setNewDemoPassword] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [editingNip, setEditingNip] = useState(null);
   const [galleryNip, setGalleryNip] = useState(null);
@@ -176,12 +178,25 @@ export default function AdminPage({ profile, onLogout }) {
       return;
     }
 
+    if (newIsDemo && !newDemoPassword) {
+      Swal.fire({ icon: 'warning', title: 'Password Demo Kosong', text: 'Isi password untuk akun demo.' });
+      return;
+    }
+
     setIsAdding(true);
     try {
       const days = newDurationDays === 'unlimited' ? null : Number(newDurationDays);
-      await addAllowedNip({ nip: newNip, nama: newNama || null, expiresAt: computeExpiresAt(days) });
+      await addAllowedNip({
+        nip: newNip,
+        nama: newNama || null,
+        expiresAt: computeExpiresAt(days),
+        isDemo: newIsDemo,
+        password: newIsDemo ? newDemoPassword : undefined,
+      });
       setNewNip('');
       setNewNama('');
+      setNewIsDemo(false);
+      setNewDemoPassword('');
       await loadAllowedNips();
       Swal.fire({ icon: 'success', title: 'NIP Ditambahkan', timer: 1200, showConfirmButton: false });
     } catch (e) {
@@ -430,6 +445,20 @@ export default function AdminPage({ profile, onLogout }) {
                 <option key={opt.label} value={opt.days ?? 'unlimited'}>{opt.label}</option>
               ))}
             </select>
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 px-1">
+              <input type="checkbox" checked={newIsDemo} onChange={(e) => setNewIsDemo(e.target.checked)} />
+              Akun demo (tanpa beetri)
+            </label>
+            {newIsDemo && (
+              <input
+                type="text"
+                autoComplete="off"
+                className="flex-1 min-w-[160px] border border-slate-300 rounded-xl p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Password demo"
+                value={newDemoPassword}
+                onChange={(e) => setNewDemoPassword(e.target.value)}
+              />
+            )}
             <button
               type="button"
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2.5 rounded-xl transition-all disabled:opacity-60"
@@ -472,7 +501,12 @@ export default function AdminPage({ profile, onLogout }) {
                       : 'bg-emerald-50 text-emerald-600 border border-emerald-200';
                   return (
                     <tr key={n.nip} className="border-b border-slate-100 last:border-0">
-                      <td className="py-2.5 pr-4 font-semibold">{n.nip}</td>
+                      <td className="py-2.5 pr-4 font-semibold">
+                        {n.nip}
+                        {n.is_demo && (
+                          <span className="ml-2 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Demo</span>
+                        )}
+                      </td>
                       <td className="py-2.5 pr-4">{n.nama || '-'}</td>
                       <td className="py-2.5 pr-4 text-slate-500">
                         {n.expires_at ? new Date(n.expires_at).toLocaleDateString('id-ID') : 'Tanpa Batas'}

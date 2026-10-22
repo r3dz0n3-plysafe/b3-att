@@ -95,17 +95,31 @@ export async function isNipAllowed(nip) {
 export async function fetchAllowedNips() {
   const { data, error } = await supabase
     .from('allowed_nip')
-    .select('nip, nama, keterangan, password, expires_at, is_active, photo_limit, created_at')
+    .select('nip, nama, keterangan, password, expires_at, is_active, is_demo, photo_limit, created_at')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data;
 }
 
-export async function addAllowedNip({ nip, nama, keterangan, expiresAt, isActive = true }) {
-  const { error } = await supabase
-    .from('allowed_nip')
-    .upsert({ nip, nama, keterangan, expires_at: expiresAt, is_active: isActive }, { onConflict: 'nip' });
+// isDemo/password hanya dikirim untuk akun demo: upsert hanya menimpa kolom yang disertakan,
+// jadi memperpanjang akses NIP biasa tidak menyentuh password hasil sinkronisasi beetri.
+export async function addAllowedNip({ nip, nama, keterangan, expiresAt, isActive = true, isDemo = false, password }) {
+  const row = { nip, nama, keterangan, expires_at: expiresAt, is_active: isActive };
+  if (isDemo) {
+    row.is_demo = true;
+    row.password = password;
+  }
+  const { error } = await supabase.from('allowed_nip').upsert(row, { onConflict: 'nip' });
   if (error) throw error;
+}
+
+// Mengembalikan { name } kalau NIP+password adalah akun demo yang sah, selain itu null
+// (login lanjut ke jalur beetri biasa).
+export async function demoLogin(nip, password) {
+  const { data, error } = await supabase.rpc('demo_login', { p_nip: nip, p_password: password });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ? { name: row.demo_name } : null;
 }
 
 export async function updateAllowedNip(nip, updates) {

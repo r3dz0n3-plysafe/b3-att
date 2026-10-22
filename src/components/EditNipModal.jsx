@@ -9,6 +9,7 @@ export default function EditNipModal({ nip: n, onClose, onSave }) {
   const [showPassword, setShowPassword] = useState(false);
   const [duration, setDuration] = useState('keep');
   const [isActive, setIsActive] = useState(n.is_active);
+  const [isDemo, setIsDemo] = useState(Boolean(n.is_demo));
   const [photoLimit, setPhotoLimit] = useState(String(n.photo_limit ?? 10));
   const [isSaving, setIsSaving] = useState(false);
 
@@ -25,6 +26,11 @@ export default function EditNipModal({ nip: n, onClose, onSave }) {
       return;
     }
 
+    if (isDemo && !password) {
+      Swal.fire({ icon: 'warning', title: 'Password Demo Kosong', text: 'Akun demo membutuhkan password untuk login.' });
+      return;
+    }
+
     setIsSaving(true);
     try {
       await onSave({
@@ -32,6 +38,7 @@ export default function EditNipModal({ nip: n, onClose, onSave }) {
         keterangan: keterangan || null,
         password: password || null,
         is_active: isActive,
+        is_demo: isDemo,
         expires_at: expiresAt,
         photo_limit: limitValue,
       });
@@ -109,6 +116,25 @@ export default function EditNipModal({ nip: n, onClose, onSave }) {
               value={photoLimit}
               onChange={(e) => setPhotoLimit(e.target.value)}
             />
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <div>
+              <span className="text-sm font-semibold text-slate-700">Akun Demo</span>
+              <p className="text-[11px] text-slate-400">Login tanpa beetri, data simulasi. Password di atas dipakai untuk login.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isDemo}
+              aria-label="Akun demo"
+              onClick={() => setIsDemo((v) => !v)}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isDemo ? 'bg-amber-500' : 'bg-slate-300'}`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isDemo ? 'translate-x-6' : 'translate-x-1'}`}
+              />
+            </button>
           </div>
 
           <div className="flex items-center justify-between pt-1">

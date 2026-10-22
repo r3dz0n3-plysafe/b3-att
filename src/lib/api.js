@@ -1,3 +1,12 @@
+import {
+  DEMO_SCHEDULE_LOCATION,
+  clearDemoFacePhoto,
+  demoResponse,
+  isDemoToken,
+  loadDemoFacePhoto,
+  saveDemoFacePhoto,
+} from "./demo.js";
+
 const BASE_URL = "https://beetri.bekasikota.go.id/api/v1";
 
 export async function fetchCaptcha() {
@@ -38,6 +47,7 @@ export async function login({ nip, password, captchaId, captchaAnswer }) {
 }
 
 export async function fetchTodayScheduleLocation(token) {
+  if (isDemoToken(token)) return DEMO_SCHEDULE_LOCATION;
   const res = await fetch(`${BASE_URL}/attendance/today-schedule`, {
     headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
   });
@@ -51,6 +61,10 @@ export async function fetchTodayScheduleLocation(token) {
 }
 
 export async function uploadFacePhoto(token, blob) {
+  if (isDemoToken(token)) {
+    await saveDemoFacePhoto(blob);
+    return demoResponse("Foto wajah tersimpan (simulasi, tidak dikirim ke beetri).");
+  }
   const fd = new FormData();
   fd.append("photo", blob, "absensi_liveness.jpg");
   const res = await fetch(`${BASE_URL}/employee/upload-face`, {
@@ -66,6 +80,7 @@ export async function uploadFacePhoto(token, blob) {
 // secara defensif: kalau content-type JSON, coba beberapa nama field foto yang umum
 // (url absolut/data URL/base64 polos); kalau bukan JSON, anggap body-nya langsung binary image.
 export async function fetchMyFacePhoto(token) {
+  if (isDemoToken(token)) return loadDemoFacePhoto();
   const res = await fetch(`${BASE_URL}/employee/my-face`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -92,6 +107,10 @@ export async function fetchMyFacePhoto(token) {
 // Diambil dari aksi `deleteFace` di panel admin lama (src/lib/employee.js), dipakai di sini
 // untuk hapus foto wajah milik sendiri (nip = milik user yang login).
 export async function deleteMyFacePhoto(token, nip) {
+  if (isDemoToken(token)) {
+    clearDemoFacePhoto();
+    return demoResponse("Foto wajah dihapus (simulasi).");
+  }
   const res = await fetch(`${BASE_URL}/employee/face/${nip}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
@@ -103,6 +122,7 @@ export async function deleteMyFacePhoto(token, nip) {
 // Diambil dari aksi `verifyFace` di panel admin lama, dipakai di sini untuk menandai foto
 // milik sendiri sebagai terverifikasi (status: 'approved').
 export async function verifyMyFace(token, nip) {
+  if (isDemoToken(token)) return demoResponse("Foto wajah terverifikasi (simulasi).");
   const res = await fetch(`${BASE_URL}/employee/verify-face`, {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -113,6 +133,9 @@ export async function verifyMyFace(token, nip) {
 }
 
 export async function submitAttendance({ token, type, blob, lat, lon, userAgent }) {
+  if (isDemoToken(token)) {
+    return demoResponse(`Absen ${type} diterima (simulasi, tidak dikirim ke beetri).`, { type, lat, lon, device_id: userAgent });
+  }
   const fd = new FormData();
   fd.append("photo", blob, "absensi_liveness.jpg");
   fd.append("lat", lat);

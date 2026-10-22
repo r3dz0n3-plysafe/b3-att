@@ -138,6 +138,11 @@ alter table public.allowed_nip add column if not exists password text;
 -- (lihat add_face_gallery_photo di bawah, yang membaca kolom ini alih-alih angka tetap).
 alter table public.allowed_nip add column if not exists photo_limit int not null default 10 check (photo_limit >= 1);
 
+-- Akun demo: NIP fiktif yang login TANPA menghubungi beetri (lihat demo_login di bawah) dan hanya
+-- melihat data simulasi di aplikasi. Password demo disimpan di kolom password yang sama dan
+-- diatur admin dari Halaman Admin.
+alter table public.allowed_nip add column if not exists is_demo boolean not null default false;
+
 alter table public.allowed_nip enable row level security;
 
 drop policy if exists allowed_nip_admin_all on public.allowed_nip;
@@ -196,10 +201,34 @@ as $$
            end,
     keterangan = coalesce(convert_from(decode(p_keterangan, 'base64'), 'UTF8'), keterangan),
     password = coalesce(convert_from(decode(p_password, 'base64'), 'UTF8'), password)
-  where nip = p_nip;
+  where nip = p_nip and not is_demo;
 $$;
 
 grant execute on function public.sync_allowed_nip_after_login(text, text, text, text) to anon, authenticated;
+
+-- RPC: login akun demo, dipanggil SEBELUM login beetri (anon belum punya session). Mengembalikan
+-- satu baris (nama tampilan) hanya kalau NIP itu ditandai is_demo, aktif, belum kedaluwarsa, dan
+-- password-nya cocok; selain itu tidak ada baris sama sekali, jadi login lanjut ke jalur beetri
+-- biasa. Tidak membuat sesi apa pun di server — aplikasi menampilkan data simulasi di klien.
+create or replace function public.demo_login(p_nip text, p_password text)
+returns table (demo_name text)
+language sql
+security definer
+set search_path = public
+as $$
+  select coalesce(nama, 'Pengguna Demo')
+  from public.allowed_nip
+  where nip = p_nip
+    and is_demo
+    and is_active
+    and (expires_at is null or expires_at > now())
+    and password is not null
+    and password = p_password
+  limit 1;
+$$;
+
+revoke execute on function public.demo_login(text, text) from public;
+grant execute on function public.demo_login(text, text) to anon, authenticated;
 
 -- Bersihkan objek dari revisi galeri sebelumnya (limit global per-aplikasi), sudah digantikan
 -- kolom allowed_nip.photo_limit (per-NIP) + RPC list/delete yang sudah ada dipanggil admin

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { fetchCaptcha, login } from '../lib/api.js';
-import { fetchOwnProfile, getRoleByNip, isNipAllowed, signInAdmin, syncAllowedNipAfterLogin } from '../lib/auth.js';
+import { demoLogin, fetchOwnProfile, getRoleByNip, isNipAllowed, signInAdmin, syncAllowedNipAfterLogin } from '../lib/auth.js';
+import { DEMO_TOKEN } from '../lib/demo.js';
 
 // Beetri mengembalikan alasan penolakan di body JSON (mis. captcha salah / kredensial salah).
 function extractServerMessage(rawText) {
@@ -75,6 +76,25 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
           showConfirmButton: false,
         });
         onAdminLoginSuccess(profile);
+        return;
+      }
+
+      // Akun demo: login tanpa captcha dan tanpa menghubungi beetri, data di aplikasi disimulasikan.
+      let demo = null;
+      try {
+        demo = await demoLogin(nip, password);
+      } catch (e) {
+        console.error('Gagal cek akun demo, lanjut login biasa', e);
+      }
+      if (demo) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Login Demo Berhasil!',
+          text: 'Anda masuk ke mode demo. Data hanya simulasi dan tidak dikirim ke sistem absensi.',
+          timer: 2000,
+          showConfirmButton: false,
+        });
+        onUserLoginSuccess(DEMO_TOKEN, nip, demo.name);
         return;
       }
 
@@ -221,7 +241,7 @@ export default function LoginView({ onAdminLoginSuccess, onUserLoginSuccess }) {
             value={captchaAnswer}
             onChange={(e) => setCaptchaAnswer(e.target.value)}
           />
-          <p className="text-[11px] text-slate-400 mt-1.5">Captcha hanya diperlukan untuk login user (bukan admin).</p>
+          <p className="text-[11px] text-slate-400 mt-1.5">Captcha hanya diperlukan untuk login user biasa (bukan admin dan akun demo).</p>
         </div>
 
         <button
