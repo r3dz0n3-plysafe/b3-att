@@ -12,13 +12,17 @@ create table if not exists public.profiles (
 
 alter table public.profiles enable row level security;
 
--- Trigger: auto-buat baris profiles begitu ada user baru di auth.users (role selalu 'admin' —
--- di app ini SATU-SATUNYA jalur yang memanggil supabase.auth.signUp() adalah pembuatan akun
--- admin dari Halaman Admin, lihat createAdminAccount di src/lib/auth.js; user biasa login
--- lewat API beetri + whitelist NIP, tidak pernah membuat baris auth.users).
--- nip & nama diambil dari raw_user_meta_data yang dikirim client saat signUp({ options: { data } }).
+-- Trigger: auto-buat baris profiles (role 'admin') begitu ada user baru di auth.users, TAPI
+-- HANYA kalau raw_app_meta_data ->> 'role' = 'admin'. raw_app_meta_data hanya bisa diisi lewat
+-- Admin API (service_role key), TIDAK bisa diisi client lewat signUp() — beda dengan
+-- raw_user_meta_data yang bebas dikirim siapa saja. Jadi signUp() langsung dari browser
+-- (publishable key itu publik) tidak akan menghasilkan akun admin.
+-- Akun admin dibuat lewat Edge Function admin-users (supabase/functions/admin-users) yang
+-- memverifikasi pemanggilnya admin lebih dulu, lihat createAdminAccount di src/lib/auth.js.
+-- User biasa login lewat API beetri + whitelist NIP, tidak pernah membuat baris auth.users.
+-- nip & nama diambil dari raw_user_meta_data yang dikirim Edge Function saat createUser.
 -- Jalan dalam transaksi yang SAMA dengan insert auth.users, jadi tidak ada race condition
--- foreign key seperti kalau insert profiles dilakukan terpisah dari client SETELAH signUp selesai.
+-- foreign key seperti kalau insert profiles dilakukan terpisah SETELAH user dibuat.
 create or replace function public.handle_new_admin_user()
 returns trigger
 language plpgsql
@@ -26,6 +30,10 @@ security definer
 set search_path = public
 as $$
 begin
+  if coalesce(new.raw_app_meta_data ->> 'role', '') <> 'admin' then
+    return new;
+  end if;
+
   insert into public.profiles (id, nip, nama, email, role)
   values (
     new.id,
@@ -199,13 +207,14 @@ drop function if exists public.admin_set_face_gallery_limit(int);
 drop function if exists public.get_face_gallery_limit();
 drop table if exists public.gallery_settings;
 
--- 7. Galeri foto wajah per NIP, dikelompokkan per tipe absen (clock-in/clock-out).
+-- 6. Galeri foto wajah per NIP, dikelompokkan per tipe absen (clock-in/clock-out).
 --    Foto disimpan sebagai bytea (binary asli, bukan base64 text) — bytea/text di Postgres
 --    sama-sama bisa menampung sampai ~1GB per kolom, jadi jauh lebih dari cukup untuk foto
 --    JPEG hasil crop (biasanya puluhan-ratusan KB). bytea dipilih karena lebih hemat ruang
 --    (tidak ada overhead ~33% seperti kalau disimpan sebagai text base64).
---    Maksimal 10 foto per (nip, attendance_type) — RPC add_face_gallery_photo MENOLAK insert
---    kalau sudah penuh (bukan auto-hapus), user harus hapus foto lama dulu lewat Galeriku.
+--    Maksimal foto per (nip, attendance_type) diatur per-NIP lewat allowed_nip.photo_limit
+--    (default 10) — RPC add_face_gallery_photo MENOLAK insert kalau sudah penuh (bukan
+--    auto-hapus), user harus hapus foto lama dulu lewat Galeriku.
 create table if not exists public.face_gallery (
   id uuid primary key default gen_random_uuid(),
   nip text not null,
@@ -294,8 +303,9 @@ grant execute on function public.delete_face_gallery_photo(uuid, text) to anon, 
 -- diklik dari Halaman Admin — konsisten dengan trust model whitelist NIP yang sudah ada
 -- (di-scope oleh parameter p_nip, bukan oleh identitas Supabase Auth pemanggil).
 
--- 6. Cara membuat akun admin pertama:
+-- 7. Cara membuat akun admin pertama (admin berikutnya dibuat dari Halaman Admin):
 --    a. Buka Authentication > Users di Supabase Dashboard > Add user (isi email & password admin).
+--       User dari dashboard tidak punya app_metadata role, jadi trigger di atas TIDAK membuat profiles.
 --    b. Copy UUID user yang baru dibuat, lalu jalankan (ganti nilai sesuai kebutuhan):
 --
 --    insert into public.profiles (id, nip, nama, email, role)

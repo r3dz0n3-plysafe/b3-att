@@ -1,4 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from './supabase.js';
 import { encodeSecret } from './secretCodec.js';
 
@@ -49,26 +48,22 @@ export async function updateOwnPassword(password) {
   if (error) throw error;
 }
 
-// Membuat akun admin baru (auth.users + baris profiles). Sengaja pakai instance Supabase
-// client TERPISAH (persistSession: false, storage sendiri) khusus untuk signUp ini — supaya
-// sesi admin yang sedang login di client utama (`supabase`) tidak ikut tertukar/ter-replace
-// oleh sesi user baru yang otomatis dibuat signUp().
-// nip & nama dikirim lewat options.data (raw_user_meta_data) supaya trigger
-// on_auth_user_created di schema.sql bisa langsung insert baris profiles DALAM transaksi yang
-// sama dengan insert auth.users — tidak perlu (dan tidak boleh) insert profiles manual di sini,
-// karena itu yang sebelumnya menyebabkan race condition foreign key.
-export async function createAdminAccount({ nip, nama, email, password }) {
-  const tempClient = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, {
-    auth: { persistSession: false },
-  });
+// Pembuatan & penghapusan akun admin dilakukan Edge Function admin-users (butuh service_role
+// key yang tidak boleh ada di browser). Function itu memverifikasi pemanggil adalah admin dari
+// JWT sesi yang sedang login. Baris profiles dibuat trigger on_auth_user_created di schema.sql
+// dalam transaksi yang sama dengan auth.users, jadi tidak ada insert profiles manual di sini.
+async function invokeAdminUsers(body) {
+  const { data, error } = await supabase.functions.invoke('admin-users', { body });
+  if (error) {
+    // Untuk respons non-2xx, pesan asli ada di body response (error.context), bukan di error.message.
+    const detail = await error.context?.json?.().catch(() => null);
+    throw new Error(detail?.error || error.message);
+  }
+  return data;
+}
 
-  const { data, error } = await tempClient.auth.signUp({
-    email,
-    password,
-    options: { data: { nip, nama: nama || null } },
-  });
-  if (error) throw error;
-  if (!data.user?.id) throw new Error('Gagal membuat akun: user id tidak ditemukan pada response signUp.');
+export async function createAdminAccount({ nip, nama, email, password }) {
+  await invokeAdminUsers({ action: 'create', nip, nama: nama || null, email, password });
 }
 
 // Tidak ada Supabase Admin API di client (butuh service_role key, tidak boleh dipakai di
@@ -85,9 +80,10 @@ export async function updateAdminProfile(id, updates) {
   if (error) throw error;
 }
 
+// Menghapus auth.users sekaligus (profiles ikut terhapus lewat cascade), jadi akun yang dihapus
+// benar-benar tidak bisa login lagi.
 export async function removeAdminProfile(id) {
-  const { error } = await supabase.from('profiles').delete().eq('id', id);
-  if (error) throw error;
+  await invokeAdminUsers({ action: 'delete', id });
 }
 
 export async function isNipAllowed(nip) {
