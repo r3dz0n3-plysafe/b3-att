@@ -48,8 +48,11 @@ end;
 $$;
 
 drop trigger if exists on_auth_user_created on auth.users;
+-- "or update of raw_app_meta_data": Admin API createUser() meng-insert baris dulu, baru mengisi
+-- app_metadata lewat update, jadi trigger cuma-insert melihat role belum ada dan melewatkan
+-- pembuatan profiles. on conflict do nothing di atas membuat update berikutnya aman.
 create trigger on_auth_user_created
-  after insert on auth.users
+  after insert or update of raw_app_meta_data on auth.users
   for each row execute function public.handle_new_admin_user();
 
 -- 2. Helper function (security definer) supaya policy tidak rekursif saat cek role admin
