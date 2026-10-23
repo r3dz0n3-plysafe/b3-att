@@ -124,8 +124,8 @@ function App() {
     });
   }
 
-  const activeTabClass = 'flex-1 md:px-8 py-3 text-sm font-bold bg-blue-600 text-white rounded-xl shadow-sm transition-all flex items-center justify-center gap-2';
-  const inactiveTabClass = 'flex-1 md:px-8 py-3 text-sm font-semibold text-slate-600 hover:text-blue-600 rounded-xl transition-all flex items-center justify-center gap-2';
+  const activeTabClass = 'flex-1 px-1 md:px-8 py-3 text-xs sm:text-sm font-bold leading-tight text-center bg-blue-600 text-white rounded-xl shadow-sm transition-all flex items-center justify-center gap-1 sm:gap-2';
+  const inactiveTabClass = 'flex-1 px-1 md:px-8 py-3 text-xs sm:text-sm font-semibold leading-tight text-center text-slate-600 hover:text-blue-600 rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-2';
 
   if (checkingSession) {
     return (
@@ -214,16 +214,22 @@ function App() {
                     <button className={mainTab === 'face' ? activeTabClass : inactiveTabClass} onClick={() => setMainTab('face')}>
                       📷 1. Deteksi Wajah
                     </button>
+                    <button className={mainTab === 'review' ? activeTabClass : inactiveTabClass} onClick={() => setMainTab('review')}>
+                      ✅ 2. Review
+                    </button>
                     <button className={mainTab === 'b3' ? activeTabClass : inactiveTabClass} onClick={() => setMainTab('b3')}>
-                      📝 2. Absensi B3
+                      📝 3. Absensi B3
                     </button>
                   </div>
                 </div>
 
-                <div className={mainTab === 'face' ? '' : 'hidden'}>
+                <div className={mainTab === 'face' || mainTab === 'review' ? '' : 'hidden'}>
                   <FaceDetectionView
                     authToken={authToken}
                     nip={nip}
+                    view={mainTab === 'review' ? 'review' : 'face'}
+                    onGotoFace={() => setMainTab('face')}
+                    onGotoReview={() => setMainTab('review')}
                     onCapture={(base64, blob) => setFaceCapture({ base64, blob })}
                     onReset={() => setFaceCapture(null)}
                     onGotoB3={() => setMainTab('b3')}

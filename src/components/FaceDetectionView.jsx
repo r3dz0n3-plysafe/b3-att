@@ -8,7 +8,9 @@ import { addFaceGalleryPhoto, deleteFaceGalleryPhoto, listFaceGalleryPhotos } fr
 const PLACEHOLDER_IMG =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2394a3b8'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>";
 
-export default function FaceDetectionView({ authToken, nip, onCapture, onReset, onGotoB3 }) {
+// view: 'face' (tab 1, sumber wajah) atau 'review' (tab 2, syarat crop sampai hasil). Keduanya tetap ter-mount
+// supaya ref per-frame (checklist, status, canvas) tidak hilang; yang tidak aktif hanya disembunyikan.
+export default function FaceDetectionView({ authToken, nip, view, onCapture, onReset, onGotoFace, onGotoReview, onGotoB3 }) {
   // ==== Structural state (drives conditional rendering) ====
   const [activeMode, setActiveModeState] = useState('webcam');
   const [cameraOn, setCameraOn] = useState(false);
@@ -43,6 +45,7 @@ export default function FaceDetectionView({ authToken, nip, onCapture, onReset, 
   const chkCenterRef = useRef(null);
   const chkPoseRef = useRef(null);
   const chkLivenessRef = useRef(null);
+  const chkMirrorBoxRef = useRef(null);
 
   // ==== Mutable (non-rendering) state ====
   const faceLandmarkerRef = useRef(null);
@@ -642,10 +645,47 @@ export default function FaceDetectionView({ authToken, nip, onCapture, onReset, 
     }
   }
 
+  // Ringkasan syarat crop di tab 1 menyalin ikon dari checklist di tab Review, supaya kode deteksi
+  // per-frame cukup menulis ke satu set elemen.
+  useEffect(() => {
+    const box = chkMirrorBoxRef.current;
+    if (!box) return undefined;
+    const pairs = [
+      [chkFaceRef, 'face'],
+      [chkSizeRef, 'size'],
+      [chkCenterRef, 'center'],
+      [chkPoseRef, 'pose'],
+      [chkLivenessRef, 'live'],
+    ];
+    const observers = [];
+    for (const [srcRef, key] of pairs) {
+      const src = srcRef.current;
+      const dst = box.querySelector(`[data-chk="${key}"]`);
+      if (!src || !dst) continue;
+      const sync = () => {
+        const icon = src.textContent.trim().split(/\s/)[0];
+        if (icon && dst.textContent !== icon) dst.textContent = icon;
+      };
+      sync();
+      const observer = new MutationObserver(sync);
+      observer.observe(src, { childList: true, characterData: true, subtree: true });
+      observers.push(observer);
+    }
+    return () => observers.forEach((o) => o.disconnect());
+  }, []);
+
+  // Hasil crop sudah ada (kamera/upload/galeri): pindah otomatis ke tab Review.
+  // Ref supaya efek hanya bereaksi pada isCroppedUI, bukan pada identitas callback yang berubah tiap render.
+  const gotoReviewRef = useRef(onGotoReview);
+  gotoReviewRef.current = onGotoReview;
+  useEffect(() => {
+    if (isCroppedUI) gotoReviewRef.current();
+  }, [isCroppedUI]);
+
   return (
-    <div id="view-face" className="glass-panel rounded-2xl shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 block border border-slate-200">
-      {/* KOLOM KIRI: KAMERA / UPLOAD */}
-      <div className="lg:col-span-7 p-4 md:p-6 border-r border-slate-200 bg-white">
+    <div id="view-face" className="glass-panel rounded-2xl shadow-xl overflow-hidden block border border-slate-200 max-w-3xl mx-auto w-full">
+      {/* TAB 1: KAMERA / UPLOAD */}
+      <div className={`p-4 md:p-6 bg-white ${view === 'face' ? '' : 'hidden'}`}>
         <h2 className="text-xl md:text-2xl font-bold mb-4 text-slate-800 hidden md:block">Sumber Wajah</h2>
 
         <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
@@ -802,36 +842,17 @@ export default function FaceDetectionView({ authToken, nip, onCapture, onReset, 
             <p ref={valMarRef} className="text-sm font-bold">0.00</p>
           </div>
           <div ref={statusBoxRef} className="sm:col-span-1 bg-blue-50 p-2 rounded-lg text-center shadow-sm border border-blue-200 flex flex-col justify-center">
-            <p className="text-[10px] text-blue-600 font-bold mb-0.5">STATUS</p>
             <p ref={actionInstrRef} className="text-sm font-bold text-blue-700 leading-tight">Posisikan<br />Wajah</p>
           </div>
         </div>
 
-        {!isCroppedUI && (
-          <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-3 flex items-center justify-center gap-2 shadow-sm" onClick={handleCapture}>
-            {activeMode === 'upload' || activeMode === 'gallery' ? 'Gunakan Gambar ini' : 'Capture'}
-          </button>
-        )}
-        {isCroppedUI && (
-          <button className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2.5 px-4 rounded-xl transition-all" onClick={() => resetCropState(true)}>
-            Ulangi Deteksi Wajah
-          </button>
-        )}
-      </div>
-
-      {/* KOLOM KANAN: HASIL */}
-      <div className="lg:col-span-5 p-6 bg-slate-50 flex flex-col h-full">
-        <h2 className="text-xl md:text-2xl font-bold mb-4 text-slate-800 hidden md:block">Hasil & Checklist</h2>
-
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 md:p-4 mb-4">
-          <h3 className="text-xs md:text-sm font-bold text-slate-500 uppercase tracking-wider mb-2 md:mb-3">Status Syarat Crop</h3>
-          <ul className="space-y-1.5 md:space-y-2 text-xs md:text-sm">
-            <li className="flex items-center gap-2"><span ref={chkFaceRef} className="text-lg md:text-xl">❌</span> Hanya ada 1 Wajah</li>
-            <li className="flex items-center gap-2"><span ref={chkSizeRef} className="text-lg md:text-xl">❌</span> Ukuran Wajah Cukup</li>
-            <li className="flex items-center gap-2"><span ref={chkCenterRef} className="text-lg md:text-xl">❌</span> Posisi Wajah di Tengah</li>
-            <li className="flex items-center gap-2"><span ref={chkPoseRef} className="text-lg md:text-xl">❌</span> Lurus Menghadap Depan</li>
-            <li className="flex items-center gap-2 font-semibold text-blue-600"><span ref={chkLivenessRef} className="text-lg md:text-xl">❌</span> Kedipkan Mata (Liveness)</li>
-          </ul>
+        <div ref={chkMirrorBoxRef} className="grid grid-cols-5 gap-1.5 mb-4" aria-label="Ringkasan syarat crop">
+          {[['face', '1 Wajah'], ['size', 'Ukuran'], ['center', 'Tengah'], ['pose', 'Lurus'], ['live', 'Kedip']].map(([key, label]) => (
+            <div key={key} className="flex flex-col items-center bg-slate-50 border border-slate-200 rounded-lg py-1.5">
+              <span data-chk={key} className="text-base leading-none">❌</span>
+              <span className="text-[10px] font-semibold text-slate-500 mt-1">{label}</span>
+            </div>
+          ))}
         </div>
 
         <div className="mb-4">
@@ -847,35 +868,82 @@ export default function FaceDetectionView({ authToken, nip, onCapture, onReset, 
           </select>
         </div>
 
+        {!isCroppedUI && (
+          <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-3 flex items-center justify-center gap-2 shadow-sm" onClick={handleCapture}>
+            {activeMode === 'upload' || activeMode === 'gallery' ? 'Gunakan Gambar ini' : 'Capture'}
+          </button>
+        )}
+        {isCroppedUI && (
+          <button className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2.5 px-4 rounded-xl transition-all" onClick={() => resetCropState(true)}>
+            Ulangi Deteksi Wajah
+          </button>
+        )}
+      </div>
+
+      {/* TAB 2: REVIEW (syarat crop sampai hasil) */}
+      <div className={`p-4 md:p-6 bg-slate-50 flex flex-col ${view === 'review' ? '' : 'hidden'}`}>
+        <h2 className="text-xl md:text-2xl font-bold mb-4 text-slate-800 hidden md:block">Review Hasil</h2>
+
+        {/* Disembunyikan: ringkasan di tab 1 sudah cukup. Tetap ter-mount karena jadi sumber ikon ringkasan (ref per-frame). */}
+        <div className="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-3 md:p-4 mb-4">
+          <h3 className="text-xs md:text-sm font-bold text-slate-500 uppercase tracking-wider mb-2 md:mb-3">Status Syarat Crop</h3>
+          <ul className="grid grid-cols-2 gap-2 text-xs md:text-sm">
+            <li className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><span ref={chkFaceRef} className="text-base leading-none">❌</span><span className="font-medium text-slate-700 leading-tight">Hanya 1 Wajah</span></li>
+            <li className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><span ref={chkSizeRef} className="text-base leading-none">❌</span><span className="font-medium text-slate-700 leading-tight">Ukuran Cukup</span></li>
+            <li className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><span ref={chkCenterRef} className="text-base leading-none">❌</span><span className="font-medium text-slate-700 leading-tight">Wajah di Tengah</span></li>
+            <li className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><span ref={chkPoseRef} className="text-base leading-none">❌</span><span className="font-medium text-slate-700 leading-tight">Lurus ke Depan</span></li>
+            <li className="col-span-2 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-2"><span ref={chkLivenessRef} className="text-base leading-none">❌</span><span className="font-semibold text-blue-700 leading-tight">Kedipkan Mata (Liveness)</span></li>
+          </ul>
+        </div>
+
+        {!isCroppedUI && (
+          <p className="mb-3 text-center text-sm text-slate-500">
+            Belum ada foto.{' '}
+            <button type="button" className="font-semibold text-blue-600 hover:underline" onClick={onGotoFace}>
+              Ambil foto di tab 1
+            </button>{' '}
+            dulu.
+          </p>
+        )}
+
         <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl bg-slate-100 p-4 mb-4 min-h-[200px]">
           <img ref={croppedImgRef} src={PLACEHOLDER_IMG} className="w-32 h-32 object-cover rounded-xl shadow-md border-4 border-white transition-all" alt="Hasil Crop" />
           <p ref={blobInfoRef} className="text-slate-500 text-xs mt-3 text-center font-mono">Belum ada Blob Data</p>
         </div>
 
         {isCroppedUI && (
-          <button
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md mb-3 flex items-center justify-center gap-2 disabled:opacity-60"
-            onClick={handleSaveProfile}
-            disabled={isSavingProfile}
-          >
-            {isSavingProfile ? '🔄 Menyimpan...' : '🖼️ Simpan sebagai Profile Picture'}
-          </button>
-        )}
+          <div className="space-y-3">
+            <button
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+              onClick={onGotoB3}
+            >
+              Lanjut ke Absensi B3 &rarr;
+            </button>
 
-        {isCroppedUI && (
-          <button
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md mb-3 flex items-center justify-center gap-2 disabled:opacity-60"
-            onClick={handleSaveToGallery}
-            disabled={isSavingToGallery}
-          >
-            {isSavingToGallery ? '🔄 Menyimpan...' : '💾 Simpan ke Galeriku'}
-          </button>
-        )}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold py-2.5 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
+                onClick={handleSaveProfile}
+                disabled={isSavingProfile}
+              >
+                {isSavingProfile ? '🔄 Menyimpan...' : '🖼️ Simpan Foto Profil'}
+              </button>
+              <button
+                className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold py-2.5 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
+                onClick={handleSaveToGallery}
+                disabled={isSavingToGallery}
+              >
+                {isSavingToGallery ? '🔄 Menyimpan...' : '💾 Simpan ke Galeriku'}
+              </button>
+            </div>
 
-        {isCroppedUI && (
-          <button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2" onClick={onGotoB3}>
-            Lanjut ke Absensi B3 &rarr;
-          </button>
+            <button
+              className="w-full text-sm font-semibold text-slate-500 hover:text-slate-700 hover:underline py-1 transition-all"
+              onClick={() => { resetCropState(true); onGotoFace(); }}
+            >
+              ↺ Ulangi Deteksi Wajah
+            </button>
+          </div>
         )}
       </div>
     </div>
