@@ -53,6 +53,10 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
   const isCroppedRef = useRef(false);
   const currentBase64Ref = useRef('');
   const currentBlobRef = useRef(null);
+  // Tipe yang sudah tersimpan ke Galeriku untuk foto (blob) yang sedang aktif.
+  const [gallerySaved, setGallerySaved] = useState({ blob: null, types: [] });
+  const savedTypes = gallerySaved.blob && gallerySaved.blob === currentBlobRef.current ? gallerySaved.types : [];
+  const allSavedToGallery = savedTypes.length >= 2;
   const currentLandmarksRef = useRef(null);
   const activeModeRef = useRef('webcam');
   const uploadedImageElementRef = useRef(null);
@@ -495,7 +499,9 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
       title: 'Simpan ke Galeriku',
       text: 'Pilih kategori tipe absen untuk foto ini:',
       input: 'select',
-      inputOptions: { 'clock-in': 'Hadir (Clock-In)', 'clock-out': 'Pulang (Clock-Out)' },
+      inputOptions: Object.fromEntries(
+        Object.entries({ 'clock-in': 'Hadir (Clock-In)', 'clock-out': 'Pulang (Clock-Out)' }).filter(([k]) => !savedTypes.includes(k))
+      ),
       inputPlaceholder: 'Pilih tipe absen',
       showCancelButton: true,
       confirmButtonText: 'Simpan',
@@ -506,6 +512,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
     setIsSavingToGallery(true);
     try {
       await addFaceGalleryPhoto(nip, type, currentBlobRef.current);
+      setGallerySaved({ blob: currentBlobRef.current, types: [...savedTypes, type] });
       Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Foto berhasil disimpan ke Galeriku.', timer: 1500, showConfirmButton: false });
     } catch (e) {
       if (e.code === 'gallery_full') {
@@ -931,9 +938,15 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
               <button
                 className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold py-2.5 px-2 rounded-xl transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
                 onClick={handleSaveToGallery}
-                disabled={isSavingToGallery}
+                disabled={isSavingToGallery || allSavedToGallery}
               >
-                {isSavingToGallery ? '🔄 Menyimpan...' : '💾 Simpan ke Galeriku'}
+                {isSavingToGallery
+                  ? '🔄 Menyimpan...'
+                  : allSavedToGallery
+                    ? '✅ Tersimpan'
+                    : savedTypes.length === 1
+                      ? `✅ Tersimpan (${savedTypes[0] === 'clock-in' ? 'Hadir' : 'Pulang'})`
+                      : '💾 Simpan ke Galeriku'}
               </button>
             </div>
 

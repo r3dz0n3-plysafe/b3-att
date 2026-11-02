@@ -57,6 +57,9 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmitSuccess, setLastSubmitSuccess] = useState(false);
   const [isSavingGallery, setIsSavingGallery] = useState(false);
+  // Foto + tipe yang sudah tersimpan ke Galeriku; tombol jadi "Tersimpan" selama keduanya sama.
+  const [savedToGallery, setSavedToGallery] = useState(null);
+  const isSavedToGallery = Boolean(faceCapture) && savedToGallery?.blob === faceCapture.blob && savedToGallery?.type === type;
 
   const defaultLatRef = useRef(-6.314567);
   const defaultLonRef = useRef(106.986529);
@@ -196,6 +199,7 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
     setIsSavingGallery(true);
     try {
       await addFaceGalleryPhoto(nip, type, faceCapture.blob);
+      setSavedToGallery({ blob: faceCapture.blob, type });
       Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Foto berhasil disimpan ke Galeriku.', timer: 1500, showConfirmButton: false });
     } catch (e) {
       if (e.code === 'gallery_full') {
@@ -334,9 +338,9 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
             <button
               className="w-full mt-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-60"
               onClick={handleSaveToGallery}
-              disabled={isSavingGallery}
+              disabled={isSavingGallery || isSavedToGallery}
             >
-              {isSavingGallery ? '🔄 Menyimpan...' : '💾 Simpan ke Galeriku'}
+              {isSavingGallery ? '🔄 Menyimpan...' : isSavedToGallery ? '✅ Tersimpan' : '💾 Simpan ke Galeriku'}
             </button>
           )}
 
