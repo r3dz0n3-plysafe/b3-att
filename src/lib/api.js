@@ -51,6 +51,7 @@ export async function fetchTodayScheduleLocation(token) {
   const res = await fetch(`${BASE_URL}/attendance/today-schedule`, {
     headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
   });
+  if (!res.ok) throw new Error(`today-schedule HTTP ${res.status}`);
   const text = await res.text();
   const json = JSON.parse(text);
   const loc = json?.location || json?.data?.location;

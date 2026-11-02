@@ -11,6 +11,9 @@ const PLACEHOLDER_IMG =
 const MAX_RANDOM_RADIUS_M = 100;
 const FAILURE_KEYWORDS = ['gagal', 'error', 'invalid', 'failed', 'tolak', 'ditolak', 'salah', 'expired', 'kadaluwarsa'];
 
+// Pesan error dari server saat lokasi di luar radius yang diizinkan.
+const OUT_OF_RADIUS_RE = /radius|jangkauan|di luar (area|lokasi)|luar area/i;
+
 // HTTP bisa 200 OK tapi body-nya sebenarnya menandakan gagal (false positive).
 // Anggap sukses HANYA kalau HTTP ok DAN tidak ada indikasi gagal di body response.
 function isTrulySuccessful(ok, rawText) {
@@ -39,8 +42,8 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
     [detectedUserAgent]
   );
   const resolvedUserAgent = device === 'detected' ? detectedUserAgent : formatUserAgent(DEVICE_USER_AGENTS[device]);
-  const [lat, setLat] = useState('-6.314554');
-  const [lon, setLon] = useState('106.986443');
+  const [lat, setLat] = useState('-6.314567');
+  const [lon, setLon] = useState('106.986529');
   const [mapSrc, setMapSrc] = useState('');
   const [attRes, setAttRes] = useState('-');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,15 +91,19 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
     updateMapPreview(la, lo);
   }
 
-  function handleRandomLocation() {
-    // sqrt(random) -> distribusi merata di seluruh area lingkaran, Math.min menjamin jarak tidak pernah melebihi radius maksimum
+  // Titik acak dalam lingkaran radius MAX_RANDOM_RADIUS_M di sekitar (baseLat, baseLon).
+  // sqrt(random) -> distribusi merata di seluruh area lingkaran, Math.min menjamin jarak tidak pernah melebihi radius maksimum
+  function randomPointAround(baseLat, baseLon) {
     const R = Math.min(MAX_RANDOM_RADIUS_M * Math.sqrt(Math.random()), MAX_RANDOM_RADIUS_M);
     const t = Math.random() * 2 * Math.PI;
     const dx = R * Math.cos(t), dy = R * Math.sin(t);
-    const la = defaultLatRef.current + dy / 111320;
-    const lo = defaultLonRef.current + dx / (111320 * Math.cos((defaultLatRef.current * Math.PI) / 180));
-    const laStr = la.toFixed(6);
-    const loStr = lo.toFixed(6);
+    const la = baseLat + dy / 111320;
+    const lo = baseLon + dx / (111320 * Math.cos((baseLat * Math.PI) / 180));
+    return { lat: la.toFixed(6), lon: lo.toFixed(6) };
+  }
+
+  function handleRandomLocation() {
+    const { lat: laStr, lon: loStr } = randomPointAround(defaultLatRef.current, defaultLonRef.current);
     setLat(laStr);
     setLon(loStr);
     updateMapPreview(laStr, loStr);
@@ -119,16 +126,44 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
       return;
     }
 
+    // Normalisasi koma desimal & validasi rentang koordinat sebelum dikirim.
+    const latNum = parseFloat(String(lat).trim().replace(',', '.'));
+    const lonNum = parseFloat(String(lon).trim().replace(',', '.'));
+    if (Number.isNaN(latNum) || Number.isNaN(lonNum) || Math.abs(latNum) > 90 || Math.abs(lonNum) > 180) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Koordinat Tidak Valid',
+        text: 'Latitude harus -90 s/d 90 dan longitude -180 s/d 180 (angka).',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const { ok, rawText } = await submitAttendance({
-        token: authToken,
-        type,
-        blob: faceCapture.blob,
-        lat,
-        lon,
-        userAgent: resolvedUserAgent,
-      });
+      const send = (la, lo) =>
+        submitAttendance({
+          token: authToken,
+          type,
+          blob: faceCapture.blob,
+          lat: String(la),
+          lon: String(lo),
+          userAgent: resolvedUserAgent,
+        });
+
+      let { ok, rawText } = await send(latNum, lonNum);
+
+      // Fallback: server kadang menolak koordinat jadwal dengan error "di luar radius",
+      // padahal titik acuan validasinya 0,0. Coba ulang sekali di sekitar 0,0 (±100 m).
+      if (!isTrulySuccessful(ok, rawText) && OUT_OF_RADIUS_RE.test(rawText) && !(latNum === 0 && lonNum === 0)) {
+        const fb = randomPointAround(0, 0);
+        const retry = await send(fb.lat, fb.lon);
+        ok = retry.ok;
+        rawText = retry.rawText;
+        setLat(fb.lat);
+        setLon(fb.lon);
+        updateMapPreview(fb.lat, fb.lon);
+      }
+
       const trueSuccess = isTrulySuccessful(ok, rawText);
       setAttRes(rawText);
       setLastSubmitSuccess(trueSuccess);

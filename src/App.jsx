@@ -52,6 +52,8 @@ function App() {
           setAuthToken(userSession.token);
           setNip(userSession.nip);
           setUserName(userSession.name || '');
+          // Sesi dipulihkan tanpa login ulang: lokasi jadwal tetap harus diambil.
+          loadScheduleLocation(userSession.token, false);
         }
       }
       if (mounted) setCheckingSession(false);
@@ -79,11 +81,18 @@ function App() {
     setMainTab('face');
     saveUserSession({ token, nip: nipValue, name: nameValue });
 
-    // Update default lokasi dari jadwal hari ini (jika tersedia)
+    await loadScheduleLocation(token, true);
+
+    navigate('/', { replace: true });
+  }
+
+  // Update default lokasi dari jadwal hari ini (jika tersedia).
+  async function loadScheduleLocation(token, notifyOnError) {
     try {
       const loc = await fetchTodayScheduleLocation(token);
       if (loc) setScheduleLocation(loc);
     } catch (e) {
+      if (!notifyOnError) return;
       Swal.fire({
         icon: 'warning',
         title: 'Jadwal Hari Ini Tidak Tersedia',
@@ -92,8 +101,6 @@ function App() {
         showConfirmButton: false,
       });
     }
-
-    navigate('/', { replace: true });
   }
 
   function handleLogout() {
