@@ -133,14 +133,14 @@ export default function HelpView({ onGoto }) {
         <Step n="3" title="Perangkat yang Dipakai (HP kamu)">
           <p>Biarkan saja seperti bawaannya (<b>Perangkat Ini Terdeteksi</b>). Tidak perlu diubah.</p>
         </Step>
-        <Step n="4" title="Cek lokasi" mock={
-          <>
+        <Step n="4" title="Lokasi (biasanya tidak perlu diubah)" mock={<Chip className="bg-slate-50 text-slate-600 border border-slate-200">⚙️ Pengaturan Lanjutan (Lokasi)</Chip>}>
+          <p>Lokasi sudah terisi sendiri sesuai jadwalmu hari ini, jadi kamu bisa langsung ke langkah berikutnya. Saat dikirim, titiknya otomatis digeser sedikit (acak, tidak jauh dari lokasi jadwal). Cukup lihat tulisan kecil "📍 Lokasi: …" di atas tombol kirim.</p>
+          <p>Kalau memang perlu mengubah lokasi, buka <b>Pengaturan Lanjutan (Lokasi)</b>. Di dalamnya ada:</p>
+          <div className="flex flex-wrap gap-2">
             <Chip className={cyan}>🗺️ View Map</Chip>
             <Chip className={orange}>🎲 Acak ±100m</Chip>
             <Chip className={gray}>🔄 Reset Lokasi</Chip>
-          </>
-        }>
-          <p>Lokasi sudah terisi sendiri sesuai jadwalmu hari ini. Biasanya kamu tidak perlu mengubah apa-apa.</p>
+          </div>
           <ul className="list-disc pl-5 space-y-1">
             <li><b>View Map</b> → lihat lokasinya di peta.</li>
             <li><b>Acak ±100m</b> → geser sedikit titiknya (dekat-dekat saja).</li>

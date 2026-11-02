@@ -120,6 +120,15 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
     updateMapPreview(laStr, loStr);
   }
 
+  // Ringkasan lokasi yang selalu terlihat, walau bagian koordinat dilipat di "Pengaturan Lanjutan".
+  const isLocationEdited =
+    parseFloat(lat) !== defaultLatRef.current || parseFloat(lon) !== defaultLonRef.current;
+  const locationSummary = isLocationEdited
+    ? 'diubah manual (lihat Pengaturan Lanjutan)'
+    : scheduleLocation
+      ? 'sesuai jadwal hari ini (digeser acak ±100 m saat dikirim)'
+      : 'bawaan (jadwal belum termuat), digeser acak ±100 m saat dikirim';
+
   async function handleSubmit() {
     if (!authToken) {
       Swal.fire({ icon: 'warning', title: 'Sesi Tidak Valid', text: 'Silakan login kembali.' });
@@ -161,11 +170,17 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
           userAgent: resolvedUserAgent,
         });
 
-      let { ok, rawText } = await send(latNum, lonNum);
+      // Lokasi belum diubah manual -> acak otomatis ±100 m dari titik jadwal. Kalau sudah diubah
+      // (diketik / tombol Acak / Reset), pakai persis yang ada di form.
+      const isEdited = latNum !== defaultLatRef.current || lonNum !== defaultLonRef.current;
+      const sent = isEdited ? { lat: latNum, lon: lonNum } : randomPointAround(defaultLatRef.current, defaultLonRef.current);
+      const nearZero = Math.abs(parseFloat(sent.lat)) < 0.01 && Math.abs(parseFloat(sent.lon)) < 0.01;
+
+      let { ok, rawText } = await send(sent.lat, sent.lon);
 
       // Fallback: server kadang menolak koordinat jadwal dengan error "di luar radius",
       // padahal titik acuan validasinya 0,0. Coba ulang sekali di sekitar 0,0 (±100 m).
-      if (!isTrulySuccessful(ok, rawText) && OUT_OF_RADIUS_RE.test(rawText) && !(latNum === 0 && lonNum === 0)) {
+      if (!isTrulySuccessful(ok, rawText) && OUT_OF_RADIUS_RE.test(rawText) && !nearZero) {
         const fb = randomPointAround(0, 0);
         const retry = await send(fb.lat, fb.lon);
         ok = retry.ok;
@@ -271,7 +286,13 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
             </div>
           </div>
 
-          <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl mb-5">
+          <p className="text-xs text-slate-500 mb-2">📍 Lokasi: {locationSummary}</p>
+          <details className="group bg-slate-50 border border-slate-200 rounded-2xl mb-5">
+            <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-sm font-bold text-slate-600">
+              <span>⚙️ Pengaturan Lanjutan (Lokasi)</span>
+              <span className="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="px-4 pb-4">
             <label className="block text-sm font-bold text-slate-700 mb-2">Koordinat Lokasi</label>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
@@ -315,6 +336,7 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
               />
             </div>
           </div>
+          </details>
 
           <button
             className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md text-lg disabled:opacity-60"
