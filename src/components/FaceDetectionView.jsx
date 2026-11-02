@@ -827,28 +827,31 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
         </div>
 
         {/* Metrik Ringkas */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4">
+        <div className="mb-4">
+          {/* Angka teknis: disembunyikan dari user, tapi tetap ter-mount karena diisi tiap frame lewat ref. */}
           <div className="hidden">
+            <div>
             <p className="text-[10px] text-slate-500 font-bold mb-0.5">YAW</p>
             <p ref={valYawRef} className="text-sm font-bold">0.0°</p>
           </div>
-          <div className="hidden">
+            <div>
             <p className="text-[10px] text-slate-500 font-bold mb-0.5">PITCH</p>
             <p ref={valPitchRef} className="text-sm font-bold">0.0°</p>
           </div>
-          <div className="hidden">
+            <div>
             <p className="text-[10px] text-slate-500 font-bold mb-0.5">ROLL</p>
             <p ref={valRollRef} className="text-sm font-bold">0.0°</p>
           </div>
-          <div className="hidden">
+            <div>
             <p className="text-[10px] text-slate-500 font-bold mb-0.5">EAR</p>
             <p ref={valEarRef} className="text-sm font-bold">0.00</p>
           </div>
-          <div className="hidden">
+            <div>
             <p className="text-[10px] text-slate-500 font-bold mb-0.5">MAR</p>
             <p ref={valMarRef} className="text-sm font-bold">0.00</p>
           </div>
-          <div ref={statusBoxRef} className="sm:col-span-1 bg-blue-50 p-2 rounded-lg text-center shadow-sm border border-blue-200 flex flex-col justify-center">
+          </div>
+          <div ref={statusBoxRef} className="w-full bg-blue-50 px-3 py-3 rounded-xl text-center shadow-sm border border-blue-200 flex flex-col justify-center">
             <p ref={actionInstrRef} className="text-sm font-bold text-blue-700 leading-tight">Posisikan<br />Wajah</p>
           </div>
         </div>
