@@ -884,8 +884,8 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
           </button>
         )}
         {isCroppedUI && (
-          <button className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2.5 px-4 rounded-xl transition-all" onClick={() => resetCropState(true)}>
-            Ulangi Deteksi Wajah
+          <button className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2" onClick={() => resetCropState(true)}>
+            ↺ Ulangi Deteksi Wajah
           </button>
         )}
       </div>
@@ -954,7 +954,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
             </div>
 
             <button
-              className="w-full text-sm font-semibold text-slate-500 hover:text-slate-700 hover:underline py-1 transition-all"
+              className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
               onClick={() => { resetCropState(true); onGotoFace(); }}
             >
               ↺ Ulangi Deteksi Wajah
