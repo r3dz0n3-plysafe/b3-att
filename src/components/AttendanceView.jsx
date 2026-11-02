@@ -30,8 +30,16 @@ function isTrulySuccessful(ok, rawText) {
   return true;
 }
 
-export default function AttendanceView({ authToken, nip, faceCapture, scheduleLocation, onNeedFace }) {
+export default function AttendanceView({ authToken, nip, faceCapture, scheduleLocation, scheduleStatus, onAttendanceSuccess, onNeedFace }) {
   const [type, setType] = useState('clock-in');
+
+  // Tipe absen mengikuti status jadwal hari ini: belum hadir -> clock-in,
+  // sudah hadir tapi belum pulang -> clock-out. Status tidak diketahui -> tidak diubah.
+  useEffect(() => {
+    if (!scheduleStatus) return;
+    if (scheduleStatus.isClockedIn === false) setType('clock-in');
+    else if (scheduleStatus.isClockedIn === true && scheduleStatus.isClockedOut !== true) setType('clock-out');
+  }, [scheduleStatus]);
   const [device, setDevice] = useState('detected');
 
   // Deteksi user agent perangkat asli yang sedang dipakai, diformat dengan
@@ -167,6 +175,7 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
       const trueSuccess = isTrulySuccessful(ok, rawText);
       setAttRes(rawText);
       setLastSubmitSuccess(trueSuccess);
+      if (trueSuccess) onAttendanceSuccess?.(type);
       Swal.fire({
         icon: trueSuccess ? 'success' : 'error',
         title: trueSuccess ? 'Absensi Berhasil Dikirim' : 'Absensi Gagal Dikirim',
@@ -235,9 +244,14 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
                 value={type}
                 onChange={(e) => setType(e.target.value)}
               >
-                <option value="clock-in">Hadir (Clock-In)</option>
-                <option value="clock-out">Pulang (Clock-Out)</option>
+                <option value="clock-in">Hadir (Clock-In){scheduleStatus?.isClockedIn ? ' ✔ sudah' : ''}</option>
+                <option value="clock-out">Pulang (Clock-Out){scheduleStatus?.isClockedOut ? ' ✔ sudah' : ''}</option>
               </select>
+              {scheduleStatus && (scheduleStatus.isClockedIn !== null || scheduleStatus.isClockedOut !== null) && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Status hari ini: {scheduleStatus.isClockedIn ? 'sudah hadir' : 'belum hadir'}, {scheduleStatus.isClockedOut ? 'sudah pulang' : 'belum pulang'}.
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">Device ID</label>

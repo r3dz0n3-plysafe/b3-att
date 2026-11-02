@@ -46,8 +46,15 @@ export async function login({ nip, password, captchaId, captchaAnswer }) {
   return { ok: res.ok, rawText: text, token, userName, userRole };
 }
 
-export async function fetchTodayScheduleLocation(token) {
-  if (isDemoToken(token)) return DEMO_SCHEDULE_LOCATION;
+// Nilai flag dari API bisa true/false, 1/0, atau "true"/"false". Tidak ada -> null (tidak diketahui).
+function toBoolOrNull(v) {
+  if (v === undefined || v === null) return null;
+  return v === true || v === 1 || v === '1' || String(v).toLowerCase() === 'true';
+}
+
+// Mengembalikan { location: {lat, lon} | null, isClockedIn, isClockedOut } dari jadwal hari ini.
+export async function fetchTodaySchedule(token) {
+  if (isDemoToken(token)) return { location: DEMO_SCHEDULE_LOCATION, isClockedIn: false, isClockedOut: false };
   const res = await fetch(`${BASE_URL}/attendance/today-schedule`, {
     headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
   });
@@ -57,8 +64,12 @@ export async function fetchTodayScheduleLocation(token) {
   const loc = json?.location || json?.data?.location;
   const lat = parseFloat(loc?.latitude);
   const lon = parseFloat(loc?.longitude);
-  if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
-  return { lat, lon };
+  const pick = (key) => json?.[key] ?? json?.data?.[key] ?? loc?.[key];
+  return {
+    location: Number.isNaN(lat) || Number.isNaN(lon) ? null : { lat, lon },
+    isClockedIn: toBoolOrNull(pick('is_clocked_in')),
+    isClockedOut: toBoolOrNull(pick('is_clocked_out')),
+  };
 }
 
 export async function uploadFacePhoto(token, blob) {

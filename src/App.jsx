@@ -5,10 +5,11 @@ import LoginView from './components/LoginView.jsx';
 import FaceDetectionView from './components/FaceDetectionView.jsx';
 import AttendanceView from './components/AttendanceView.jsx';
 import ProfileView from './components/ProfileView.jsx';
+import HelpView from './components/HelpView.jsx';
 import AdminPage from './components/AdminPage.jsx';
 import ResetPasswordView from './components/ResetPasswordView.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
-import { fetchTodayScheduleLocation } from './lib/api.js';
+import { fetchTodaySchedule } from './lib/api.js';
 import { fetchOwnProfile, signOutAdmin } from './lib/auth.js';
 import { supabase } from './lib/supabase.js';
 import { saveUserSession, loadUserSession, clearUserSession } from './lib/userSession.js';
@@ -22,6 +23,7 @@ function App() {
   const [mainTab, setMainTab] = useState('face');
   const [faceCapture, setFaceCapture] = useState(null);
   const [scheduleLocation, setScheduleLocation] = useState(null);
+  const [scheduleStatus, setScheduleStatus] = useState(null); // { isClockedIn, isClockedOut }
   const [adminProfile, setAdminProfile] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const navigate = useNavigate();
@@ -89,8 +91,9 @@ function App() {
   // Update default lokasi dari jadwal hari ini (jika tersedia).
   async function loadScheduleLocation(token, notifyOnError) {
     try {
-      const loc = await fetchTodayScheduleLocation(token);
-      if (loc) setScheduleLocation(loc);
+      const { location, isClockedIn, isClockedOut } = await fetchTodaySchedule(token);
+      if (location) setScheduleLocation(location);
+      setScheduleStatus({ isClockedIn, isClockedOut });
     } catch (e) {
       if (!notifyOnError) return;
       Swal.fire({
@@ -126,6 +129,7 @@ function App() {
       setUserName('');
       setFaceCapture(null);
       setScheduleLocation(null);
+      setScheduleStatus(null);
       setMainTab('face');
       navigate('/login', { replace: true });
     });
@@ -207,12 +211,21 @@ function App() {
                     </div>
                     <span className="hidden sm:inline text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all text-sm ml-1 shrink-0">›</span>
                   </button>
-                  <button
-                    className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold py-2 px-3.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0"
-                    onClick={handleLogout}
-                  >
-                    🚪 <span className="hidden sm:inline">Logout / Keluar</span><span className="sm:hidden">Keluar</span>
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      className={`${mainTab === 'help' ? 'bg-blue-600 text-white border-blue-600' : 'bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200'} border text-xs font-bold py-2 px-3.5 rounded-xl transition-all flex items-center gap-1.5`}
+                      onClick={() => setMainTab('help')}
+                    >
+                      📖 <span className="hidden sm:inline">Cara Pakai</span><span className="sm:hidden">Bantuan</span>
+                    </button>
+                    <button
+                      className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold py-2 px-3.5 rounded-xl transition-all flex items-center gap-1.5"
+                      onClick={handleLogout}
+                    >
+                      🚪 <span className="hidden sm:inline">Logout / Keluar</span><span className="sm:hidden">Keluar</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Tab Navigasi Utama */}
@@ -249,12 +262,20 @@ function App() {
                     nip={nip}
                     faceCapture={faceCapture}
                     scheduleLocation={scheduleLocation}
+                    scheduleStatus={scheduleStatus}
+                    onAttendanceSuccess={(t) =>
+                      setScheduleStatus((s) => ({ isClockedIn: t === 'clock-in' ? true : s?.isClockedIn ?? null, isClockedOut: t === 'clock-out' ? true : s?.isClockedOut ?? null }))
+                    }
                     onNeedFace={() => setMainTab('face')}
                   />
                 </div>
 
                 <div className={mainTab === 'profile' ? '' : 'hidden'}>
                   <ProfileView authToken={authToken} nip={nip} name={userName} />
+                </div>
+
+                <div className={mainTab === 'help' ? '' : 'hidden'}>
+                  <HelpView onGoto={setMainTab} />
                 </div>
               </div>
             </div>
