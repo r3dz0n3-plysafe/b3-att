@@ -188,7 +188,7 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
       });
     } catch (err) {
       setLastSubmitSuccess(false);
-      Swal.fire({ icon: 'error', title: 'Error Submit', text: err.toString() });
+      Swal.fire({ icon: 'error', title: 'Gagal Mengirim Absen', text: 'Gagal terhubung. Coba lagi sebentar.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -221,7 +221,7 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
       <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-slate-200">
         <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
           <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">📸 Submit Attendance (Absensi)</h3>
-          <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-full">Sesi Aktif</span>
+          <span className="text-xs bg-blue-100 text-blue-700 font-bold px-2.5 py-1 rounded-full">Sudah Login</span>
         </div>
         <div className="p-6">
           {/* Wajah Payload Status */}
@@ -232,11 +232,11 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
               alt="Wajah"
             />
             <div>
-              <p className="text-sm font-bold text-slate-700">Foto Wajah (Payload Base)</p>
+              <p className="text-sm font-bold text-slate-700">Foto Wajah</p>
               <p className={`text-sm font-semibold ${faceCapture ? 'text-green-600' : 'text-red-500'}`}>
                 {faceCapture ? '✅ Wajah tersimpan dan siap dikirim' : '❌ Belum ada wajah tersimpan'}
               </p>
-              <p className="text-xs text-slate-500 mt-1">Selesaikan "Deteksi Wajah" di Tab 1 untuk mengisi payload ini.</p>
+              <p className="text-xs text-slate-500 mt-1">Selesaikan "Deteksi Wajah" di Tab 1 untuk mengisi foto ini.</p>
             </div>
           </div>
 
@@ -248,8 +248,8 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
                 value={type}
                 onChange={(e) => setType(e.target.value)}
               >
-                <option value="clock-in">Hadir (Clock-In){scheduleStatus?.isClockedIn ? ' ✔ sudah' : ''}</option>
-                <option value="clock-out">Pulang (Clock-Out){scheduleStatus?.isClockedOut ? ' ✔ sudah' : ''}</option>
+                <option value="clock-in">Hadir{scheduleStatus?.isClockedIn ? ' ✔ sudah' : ''}</option>
+                <option value="clock-out">Pulang{scheduleStatus?.isClockedOut ? ' ✔ sudah' : ''}</option>
               </select>
               {scheduleStatus && (scheduleStatus.isClockedIn !== null || scheduleStatus.isClockedOut !== null) && (
                 <p className="text-xs text-slate-500 mt-1">
@@ -258,7 +258,7 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
               )}
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Device ID</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Perangkat yang Dipakai</label>
               <select
                 className="w-full border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={device}
@@ -275,7 +275,7 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
             <label className="block text-sm font-bold text-slate-700 mb-2">Koordinat Lokasi</label>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="text-xs text-slate-500">Latitude</label>
+                <label className="text-xs text-slate-500">Garis Lintang (Lat)</label>
                 <input
                   className="w-full border border-slate-300 rounded-lg p-2 font-mono text-sm"
                   value={lat}
@@ -284,7 +284,7 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
                 />
               </div>
               <div>
-                <label className="text-xs text-slate-500">Longitude</label>
+                <label className="text-xs text-slate-500">Garis Bujur (Lon)</label>
                 <input
                   className="w-full border border-slate-300 rounded-lg p-2 font-mono text-sm"
                   value={lon}
@@ -316,16 +316,6 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
             </div>
           </div>
 
-          <div className="mb-5">
-            <label className="block text-xs font-semibold text-slate-500 mb-1">Bearer Token Aktif</label>
-            <textarea
-              className="w-full border border-slate-200 rounded-xl p-2.5 text-xs font-mono bg-slate-100 text-slate-600 focus:outline-none"
-              rows={2}
-              readOnly
-              value={authToken}
-            />
-          </div>
-
           <button
             className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md text-lg disabled:opacity-60"
             onClick={handleSubmit}
@@ -347,7 +337,7 @@ export default function AttendanceView({ authToken, nip, faceCapture, scheduleLo
           <div className="mt-4">
             <details className="group bg-slate-50 border border-slate-200 rounded-xl p-3">
               <summary className="text-sm font-bold text-slate-600 cursor-pointer list-none flex justify-between items-center">
-                <span>Lihat Response API Submit</span>
+                <span>Lihat Detail Hasil Absen</span>
                 <span className="text-slate-400 group-open:rotate-180 transition-transform">▼</span>
               </summary>
               <pre className="mt-3 text-xs bg-slate-900 text-green-400 p-3 rounded-lg overflow-x-auto">{attRes}</pre>

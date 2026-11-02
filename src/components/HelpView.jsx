@@ -78,7 +78,7 @@ export default function HelpView({ onGoto }) {
       <Section id="bantu-foto" icon="📷" title="Langkah 1: Ambil Foto Wajah" intro="Ini fotonya yang nanti dikirim saat absen.">
         <Step n="1" title="Pilih mau foto dari mana" mock={
           <>
-            <Chip className="bg-white text-blue-600 shadow-sm border border-slate-200">Kamera (Oncam)</Chip>
+            <Chip className="bg-white text-blue-600 shadow-sm border border-slate-200">Kamera</Chip>
             <Chip className="bg-slate-100 text-slate-600">Upload Foto</Chip>
             <Chip className="bg-slate-100 text-slate-600">Galeriku</Chip>
           </>
@@ -89,8 +89,8 @@ export default function HelpView({ onGoto }) {
           <p>Tekan tombol itu, lalu izinkan kamera kalau ditanya. Hadapkan wajah lurus ke depan, jangan terlalu jauh, jangan miring, dan cari tempat yang terang.</p>
           <p>Kalau wajahmu sudah pas, aplikasi akan memberi tanda centang ✅. Ikuti petunjuknya sampai semua centang.</p>
         </Step>
-        <Step n="3" title="Ambil fotonya" mock={<Chip className={blue}>Capture</Chip>}>
-          <p>Kalau sudah bagus, tekan tombol <b>Capture</b> (kalau foto dari Upload atau Galeriku, tombolnya bernama <b>Gunakan Gambar ini</b>). Kalau kurang bagus, tekan tombol abu-abu untuk mengulang sampai puas.</p>
+        <Step n="3" title="Ambil fotonya" mock={<Chip className={blue}>Ambil Foto</Chip>}>
+          <p>Kalau sudah bagus, tekan tombol <b>Ambil Foto</b> (kalau foto dari Upload atau Galeriku, tombolnya bernama <b>Gunakan Gambar ini</b>). Kalau kurang bagus, tekan tombol abu-abu untuk mengulang sampai puas.</p>
         </Step>
         <Tip>💡 Pakai <b>Galeriku</b> kalau malas foto tiap hari: pilih saja foto lama yang sudah bagus.</Tip>
       </Section>
@@ -123,14 +123,14 @@ export default function HelpView({ onGoto }) {
         </Step>
         <Step n="2" title="Pilih Hadir atau Pulang" mock={
           <>
-            <Chip className={white}>Hadir (Clock-In)</Chip>
-            <Chip className={white}>Pulang (Clock-Out)</Chip>
+            <Chip className={white}>Hadir</Chip>
+            <Chip className={white}>Pulang</Chip>
           </>
         }>
           <p>Pilihan ini sudah terisi sendiri. Kalau kamu belum absen hari ini, otomatis <b>Hadir</b>. Kalau sudah hadir, otomatis <b>Pulang</b>. Cek saja sudah benar atau belum ya.</p>
           <p>Di bawahnya ada tulisan "Status hari ini" yang memberi tahu kamu sudah hadir/pulang atau belum.</p>
         </Step>
-        <Step n="3" title="Device ID (HP yang dipakai)">
+        <Step n="3" title="Perangkat yang Dipakai (HP kamu)">
           <p>Biarkan saja seperti bawaannya (<b>Perangkat Ini Terdeteksi</b>). Tidak perlu diubah.</p>
         </Step>
         <Step n="4" title="Cek lokasi" mock={

@@ -29,7 +29,7 @@ export default function ProfileView({ authToken, nip, name }) {
         Swal.fire({ icon: 'error', title: 'Gagal Mengunggah', text: rawText });
       }
     } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Error API', text: err.toString() });
+      Swal.fire({ icon: 'error', title: 'Terjadi Kesalahan', text: 'Gagal terhubung. Coba lagi sebentar.' });
     } finally {
       setBusyAction('');
     }
@@ -57,7 +57,7 @@ export default function ProfileView({ authToken, nip, name }) {
         Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: rawText });
       }
     } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Error API', text: err.toString() });
+      Swal.fire({ icon: 'error', title: 'Terjadi Kesalahan', text: 'Gagal terhubung. Coba lagi sebentar.' });
     } finally {
       setBusyAction('');
     }
@@ -73,7 +73,7 @@ export default function ProfileView({ authToken, nip, name }) {
         Swal.fire({ icon: 'error', title: 'Gagal Verifikasi', text: rawText });
       }
     } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Error API', text: err.toString() });
+      Swal.fire({ icon: 'error', title: 'Terjadi Kesalahan', text: 'Gagal terhubung. Coba lagi sebentar.' });
     } finally {
       setBusyAction('');
     }

@@ -16,7 +16,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
   const [cameraOn, setCameraOn] = useState(false);
   const [toggleCameraDisabled, setToggleCameraDisabled] = useState(false);
   const [mediapipeLoading, setMediapipeLoading] = useState(true);
-  const [loadingText, setLoadingText] = useState('Memuat MediaPipe FaceLandmarker...');
+  const [loadingText, setLoadingText] = useState('Menyiapkan kamera...');
   const [uploadedPreviewSrc, setUploadedPreviewSrc] = useState(null);
   const [resizeValue, setResizeValue] = useState('256');
   const [isCroppedUI, setIsCroppedUI] = useState(false);
@@ -151,7 +151,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
       currentBlobRef.current = blob;
       const kbSize = (blob.size / 1024).toFixed(2);
       if (blobInfoRef.current) {
-        blobInfoRef.current.innerHTML = `Blob siap: <span class="font-bold text-slate-800">${kbSize} KB</span>`;
+        blobInfoRef.current.innerHTML = `Foto siap: <span class="font-bold text-slate-800">${kbSize} KB</span>`;
       }
 
       updateB3FaceStatus(currentBase64Ref.current);
@@ -226,7 +226,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
 
         if (!isCroppedRef.current) {
           if (isSizeGood && isCentered && isStraight) {
-            if (actionInstrRef.current) actionInstrRef.current.innerHTML = "Wajah Siap!<br><span class='text-xs'>Tekan Tombol Capture</span>";
+            if (actionInstrRef.current) actionInstrRef.current.innerHTML = "Wajah Siap!<br><span class='text-xs'>Tekan Tombol Ambil Foto</span>";
             if (chkLivenessRef.current) chkLivenessRef.current.innerHTML = '✅ <span class="text-xs text-slate-500">(Siap)</span>';
           } else {
             if (actionInstrRef.current) actionInstrRef.current.innerHTML = 'Posisikan<br>Wajah';
@@ -303,7 +303,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
           uploadRejectReasonsRef.current = [];
           if (chkLivenessRef.current) chkLivenessRef.current.innerHTML = '✅ <span class="text-xs text-slate-500">(Uploaded)</span>';
           setUploadStatusBox(false);
-          if (actionInstrRef.current) actionInstrRef.current.innerHTML = "Wajah Valid!<br><span class='text-xs'>Tekan Tombol Capture</span>";
+          if (actionInstrRef.current) actionInstrRef.current.innerHTML = "Wajah Valid!<br><span class='text-xs'>Tekan Tombol Ambil Foto</span>";
         } else {
           currentLandmarksRef.current = landmarks;
           if (chkLivenessRef.current) chkLivenessRef.current.textContent = '❌';
@@ -406,7 +406,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
         faceLandmarkerRef.current = landmarker;
         setMediapipeLoading(false);
       } catch (error) {
-        if (!cancelled) setLoadingText('Gagal memuat MediaPipe FaceLandmarker.');
+        if (!cancelled) setLoadingText('Gagal menyiapkan kamera. Muat ulang halaman.');
       }
     }
 
@@ -500,7 +500,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
       text: 'Pilih kategori tipe absen untuk foto ini:',
       input: 'select',
       inputOptions: Object.fromEntries(
-        Object.entries({ 'clock-in': 'Hadir (Clock-In)', 'clock-out': 'Pulang (Clock-Out)' }).filter(([k]) => !savedTypes.includes(k))
+        Object.entries({ 'clock-in': 'Hadir', 'clock-out': 'Pulang' }).filter(([k]) => !savedTypes.includes(k))
       ),
       inputPlaceholder: 'Pilih tipe absen',
       showCancelButton: true,
@@ -542,7 +542,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
     setIsCropped(true);
     if (croppedImgRef.current) croppedImgRef.current.src = photo.base64;
     if (blobInfoRef.current) {
-      blobInfoRef.current.innerHTML = `Blob siap: <span class="font-bold text-slate-800">${(blob.size / 1024).toFixed(2)} KB</span> <span class="text-slate-400">(dari Galeriku)</span>`;
+      blobInfoRef.current.innerHTML = `Foto siap: <span class="font-bold text-slate-800">${(blob.size / 1024).toFixed(2)} KB</span> <span class="text-slate-400">(dari Galeriku)</span>`;
     }
     updateB3FaceStatus(currentBase64Ref.current);
     if (actionInstrRef.current) {
@@ -565,7 +565,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
     uploadRejectReasonsRef.current = [];
     currentBase64Ref.current = '';
     if (croppedImgRef.current) croppedImgRef.current.src = PLACEHOLDER_IMG;
-    if (blobInfoRef.current) blobInfoRef.current.innerHTML = 'Belum ada Blob Data';
+    if (blobInfoRef.current) blobInfoRef.current.innerHTML = 'Belum ada foto';
 
     onReset();
 
@@ -646,7 +646,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
         Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: rawText });
       }
     } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Error API', text: err.toString() });
+      Swal.fire({ icon: 'error', title: 'Terjadi Kesalahan', text: 'Gagal terhubung. Coba lagi sebentar.' });
     } finally {
       setIsSavingProfile(false);
     }
@@ -700,7 +700,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
             className={`flex-1 py-2 text-sm rounded-lg transition-all ${activeMode === 'webcam' ? 'font-bold bg-white text-blue-600 shadow-sm' : 'font-semibold text-slate-600'}`}
             onClick={handleTabWebcam}
           >
-            Kamera (Oncam)
+            Kamera
           </button>
           <button
             className={`flex-1 py-2 text-sm rounded-lg transition-all ${activeMode === 'upload' ? 'font-bold bg-white text-blue-600 shadow-sm' : 'font-semibold text-slate-600'}`}
@@ -785,7 +785,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
           )}
           {!isLoadingGallery && galleryPhotos.length === 0 && (
             <div className="flex items-center justify-center h-full text-slate-400 text-sm font-semibold text-center px-4">
-              Belum ada foto tersimpan.<br />Simpan foto dari hasil crop untuk mengisi Galeriku.
+              Belum ada foto tersimpan.<br />Simpan foto hasil ambil foto untuk mengisi Galeriku.
             </div>
           )}
           {!isLoadingGallery && galleryPhotos.length > 0 && (
@@ -796,7 +796,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
                 return (
                   <div key={t}>
                     <p className="text-xs font-bold uppercase text-slate-500 mb-2">
-                      {t === 'clock-in' ? '📥 Hadir (Clock-In)' : '📤 Pulang (Clock-Out)'} ({photos.length}/10)
+                      {t === 'clock-in' ? '📥 Hadir' : '📤 Pulang'} ({photos.length}/10)
                     </p>
                     <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
                       {photos.map((p) => (
@@ -828,23 +828,23 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
 
         {/* Metrik Ringkas */}
         <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-4">
-          <div className="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
+          <div className="hidden">
             <p className="text-[10px] text-slate-500 font-bold mb-0.5">YAW</p>
             <p ref={valYawRef} className="text-sm font-bold">0.0°</p>
           </div>
-          <div className="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
+          <div className="hidden">
             <p className="text-[10px] text-slate-500 font-bold mb-0.5">PITCH</p>
             <p ref={valPitchRef} className="text-sm font-bold">0.0°</p>
           </div>
-          <div className="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
+          <div className="hidden">
             <p className="text-[10px] text-slate-500 font-bold mb-0.5">ROLL</p>
             <p ref={valRollRef} className="text-sm font-bold">0.0°</p>
           </div>
-          <div className="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
+          <div className="hidden">
             <p className="text-[10px] text-slate-500 font-bold mb-0.5">EAR</p>
             <p ref={valEarRef} className="text-sm font-bold">0.00</p>
           </div>
-          <div className="hidden sm:block bg-slate-100 p-2 rounded-lg text-center shadow-sm">
+          <div className="hidden">
             <p className="text-[10px] text-slate-500 font-bold mb-0.5">MAR</p>
             <p ref={valMarRef} className="text-sm font-bold">0.00</p>
           </div>
@@ -853,7 +853,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
           </div>
         </div>
 
-        <div ref={chkMirrorBoxRef} className="grid grid-cols-5 gap-1.5 mb-4" aria-label="Ringkasan syarat crop">
+        <div ref={chkMirrorBoxRef} className="grid grid-cols-5 gap-1.5 mb-4" aria-label="Ringkasan syarat foto">
           {[['face', '1 Wajah'], ['size', 'Ukuran'], ['center', 'Tengah'], ['pose', 'Lurus'], ['live', 'Kedip']].map(([key, label]) => (
             <div key={key} className="flex flex-col items-center bg-slate-50 border border-slate-200 rounded-lg py-1.5">
               <span data-chk={key} className="text-base leading-none">❌</span>
@@ -863,7 +863,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-semibold text-slate-700 mb-1">Ukuran Hasil Crop:</label>
+          <label className="block text-sm font-semibold text-slate-700 mb-1">Ukuran Foto:</label>
           <select
             className="w-full bg-white border border-slate-300 text-slate-700 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={resizeValue}
@@ -877,7 +877,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
 
         {!isCroppedUI && (
           <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all mb-3 flex items-center justify-center gap-2 shadow-sm" onClick={handleCapture}>
-            {activeMode === 'upload' || activeMode === 'gallery' ? 'Gunakan Gambar ini' : 'Capture'}
+            {activeMode === 'upload' || activeMode === 'gallery' ? 'Gunakan Gambar ini' : 'Ambil Foto'}
           </button>
         )}
         {isCroppedUI && (
@@ -893,7 +893,7 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
 
         {/* Disembunyikan: ringkasan di tab 1 sudah cukup. Tetap ter-mount karena jadi sumber ikon ringkasan (ref per-frame). */}
         <div className="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-3 md:p-4 mb-4">
-          <h3 className="text-xs md:text-sm font-bold text-slate-500 uppercase tracking-wider mb-2 md:mb-3">Status Syarat Crop</h3>
+          <h3 className="text-xs md:text-sm font-bold text-slate-500 uppercase tracking-wider mb-2 md:mb-3">Syarat Foto</h3>
           <ul className="grid grid-cols-2 gap-2 text-xs md:text-sm">
             <li className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><span ref={chkFaceRef} className="text-base leading-none">❌</span><span className="font-medium text-slate-700 leading-tight">Hanya 1 Wajah</span></li>
             <li className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2"><span ref={chkSizeRef} className="text-base leading-none">❌</span><span className="font-medium text-slate-700 leading-tight">Ukuran Cukup</span></li>
@@ -914,8 +914,8 @@ export default function FaceDetectionView({ authToken, nip, view, onCapture, onR
         )}
 
         <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl bg-slate-100 p-4 mb-4 min-h-[200px]">
-          <img ref={croppedImgRef} src={PLACEHOLDER_IMG} className="w-32 h-32 object-cover rounded-xl shadow-md border-4 border-white transition-all" alt="Hasil Crop" />
-          <p ref={blobInfoRef} className="text-slate-500 text-xs mt-3 text-center font-mono">Belum ada Blob Data</p>
+          <img ref={croppedImgRef} src={PLACEHOLDER_IMG} className="w-32 h-32 object-cover rounded-xl shadow-md border-4 border-white transition-all" alt="Hasil Foto" />
+          <p ref={blobInfoRef} className="text-slate-500 text-xs mt-3 text-center font-mono">Belum ada foto</p>
         </div>
 
         {isCroppedUI && (
