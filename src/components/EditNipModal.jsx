@@ -3,6 +3,7 @@ import Swal from 'sweetalert2';
 import { DURATION_OPTIONS, computeExpiresAt } from '../lib/nipUtils.js';
 
 export default function EditNipModal({ nip: n, onClose, onSave }) {
+  const [nipValue, setNipValue] = useState(n.nip);
   const [nama, setNama] = useState(n.nama || '');
   const [keterangan, setKeterangan] = useState(n.keterangan || '');
   const [password, setPassword] = useState(n.password || '');
@@ -13,6 +14,8 @@ export default function EditNipModal({ nip: n, onClose, onSave }) {
   const [photoLimit, setPhotoLimit] = useState(String(n.photo_limit ?? 10));
   const [isSaving, setIsSaving] = useState(false);
 
+  // Username (NIP) hanya boleh diganti untuk akun demo; NIP asli terhubung ke beetri.
+  const canRenameNip = Boolean(n.is_demo);
   const currentLabel = n.expires_at ? new Date(n.expires_at).toLocaleDateString('id-ID') : 'Tanpa Batas';
 
   async function handleSubmit() {
@@ -31,9 +34,16 @@ export default function EditNipModal({ nip: n, onClose, onSave }) {
       return;
     }
 
+    const newNip = nipValue.trim();
+    if (canRenameNip && !newNip) {
+      Swal.fire({ icon: 'warning', title: 'Username Kosong', text: 'Username / NIP akun demo tidak boleh kosong.' });
+      return;
+    }
+
     setIsSaving(true);
     try {
       await onSave({
+        ...(canRenameNip && newNip !== n.nip ? { nip: newNip } : {}),
         nama: nama || null,
         keterangan: keterangan || null,
         password: password || null,
@@ -53,6 +63,19 @@ export default function EditNipModal({ nip: n, onClose, onSave }) {
         <h2 className="text-lg font-extrabold text-slate-800 mb-4">Edit NIP {n.nip}</h2>
 
         <div className="space-y-3">
+          {canRenameNip && (
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Username (NIP)</label>
+              <input
+                type="text"
+                className="w-full border border-slate-300 rounded-xl p-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={nipValue}
+                onChange={(e) => setNipValue(e.target.value)}
+                autoComplete="off"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">Khusus akun demo. User login memakai username baru ini.</p>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Nama</label>
             <input

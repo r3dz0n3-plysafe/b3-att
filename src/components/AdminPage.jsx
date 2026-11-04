@@ -115,7 +115,11 @@ export default function AdminPage({ profile, onLogout }) {
       setEditingAdmin(null);
       Swal.fire({ icon: 'success', title: 'Perubahan Disimpan', timer: 1200, showConfirmButton: false });
     } catch (e) {
-      Swal.fire({ icon: 'error', title: 'Gagal Menyimpan Perubahan', text: e.message || e.toString() });
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Menyimpan Perubahan',
+        text: e.message || e.toString(),
+      });
     }
   }
 
@@ -238,7 +242,11 @@ export default function AdminPage({ profile, onLogout }) {
       setEditingNip(null);
       Swal.fire({ icon: 'success', title: 'Perubahan Disimpan', timer: 1200, showConfirmButton: false });
     } catch (e) {
-      Swal.fire({ icon: 'error', title: 'Gagal Menyimpan Perubahan', text: e.message || e.toString() });
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Menyimpan Perubahan',
+        text: e.code === '23505' ? 'Username / NIP itu sudah dipakai akun lain.' : e.message || e.toString(),
+      });
     }
   }
 
